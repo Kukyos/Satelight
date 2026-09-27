@@ -142,31 +142,82 @@ def _fetch_copernicus(source: str, year: int) -> None:
     })
 
 
+GLORYS_BLOCK = 2081   # days per time chunk of the GLORYS time-series store (measured)
+GLORYS_TMP = config.CACHE / "glorys025"
+
+
+def _glorys_block(k: int) -> None:
+    """Every needed level of one GLORYS time chunk, regridded, as .npy on disk.
+
+    Measured 2026-09-27: reading a year at a time decompressed each 2081-day chunk once
+    per month and pinned one core. Here each level's chunks are read once, packed int16,
+    for the whole block, then decoded and regridded 100 days at a time."""
+    from . import arco
+
+    store = arco.open_store(GLORYS_ID, service="arco-time-series", raw=True)
+    ds = store.ds
+    ys, xs = _window(ds, grid.GLORYS, 1 / 12)
+    t = ds["time"].values.astype("datetime64[D]")[k * GLORYS_BLOCK:(k + 1) * GLORYS_BLOCK]
+    keep = (t >= np.datetime64(config.WINDOW[0])) & (t <= np.datetime64(config.WINDOW[1]))
+    i0, i1 = k * GLORYS_BLOCK + int(np.argmax(keep)), k * GLORYS_BLOCK + int(keep.sum()) + int(np.argmax(keep))
+    GLORYS_TMP.mkdir(parents=True, exist_ok=True)
+    np.save(GLORYS_TMP / f"b{k}_days.npy", t[keep])
+    # The time-series store orders its vertical axis as elevation, deepest first
+    # (measured 2026-09-27); each wanted level is found by value, never by position.
+    elev = ds["elevation"].values
+    da = ds["thetao"]
+    scale = float(da.attrs.get("scale_factor", 1.0))
+    offset = float(da.attrs.get("add_offset", 0.0))
+    fill = da.attrs.get("_FillValue", da.encoding.get("_FillValue"))
+    assert fill is not None and da.dtype == np.int16, "packed int16 with a fill value expected"
+    for lev in config.NEEDED_LEVELS:
+        out = GLORYS_TMP / f"b{k}_{lev:02d}.npy"
+        if out.exists():
+            continue
+        e = int(np.argmin(np.abs(elev + config.GLORYS_LEVELS[lev])))
+        assert abs(-elev[e] - config.GLORYS_LEVELS[lev]) < 0.01, (elev[e], config.GLORYS_LEVELS[lev])
+        packed = da.isel(elevation=e, time=slice(i0, i1), latitude=ys, longitude=xs).values
+        mean = np.empty((packed.shape[0], config.NLAT, config.NLON), np.float32)
+        for s0 in range(0, packed.shape[0], 100):
+            p = packed[s0:s0 + 100]
+            v = p.astype(np.float32) * scale + offset
+            v[p == fill] = np.nan
+            m, share = grid.regrid(v, grid.GLORYS)
+            m[share < config.OCEAN_FRACTION_MIN] = np.nan
+            mean[s0:s0 + 100] = m
+        tmp = out.with_suffix(".part.npy")
+        np.save(tmp, mean)
+        tmp.replace(out)
+        print(f"  glorys block {k} level {config.GLORYS_LEVELS[lev]:7.2f} m", flush=True)
+
+
 def _fetch_glorys(year: int) -> None:
     """Temperature at the 15 target depths, from the 27 GLORYS levels that bracket them."""
     from . import arco
 
-    store = arco.open_store(GLORYS_ID, service="arco-time-series")
-    ds = store.ds
-    ys, xs = _window(ds, grid.GLORYS, 1 / 12)
-    # The time-series store orders its vertical axis as elevation, deepest first
-    # (measured 2026-09-27); each wanted level is found by value, never by position.
-    elev = ds["elevation"].values
     t = year_days(year)
-    pos, missing = _time_index(ds, t)
+    have = arco.open_store(GLORYS_ID, service="arco-time-series", raw=True
+                           ).ds["time"].values.astype("datetime64[D]")
+    blocks = sorted({int(np.searchsorted(have, d) // GLORYS_BLOCK) for d in (t[0], t[-1])})
+    for k in range(blocks[0], blocks[-1] + 1):
+        _glorys_block(k)
+    days = {k: np.load(GLORYS_TMP / f"b{k}_days.npy") for k in range(blocks[0], blocks[-1] + 1)}
     levels = {}
-    for k in config.NEEDED_LEVELS:
-        e = int(np.argmin(np.abs(elev + config.GLORYS_LEVELS[k])))
-        assert abs(-elev[e] - config.GLORYS_LEVELS[k]) < 0.01, (elev[e], config.GLORYS_LEVELS[k])
-        a = _read_days(ds["thetao"].isel(elevation=e), pos, {"latitude": ys, "longitude": xs})
-        mean, share = grid.regrid(a, grid.GLORYS)
-        mean[share < config.OCEAN_FRACTION_MIN] = np.nan
-        levels[k] = mean
-        print(f"  glorys {year} level {config.GLORYS_LEVELS[k]:7.2f} m", flush=True)
+    for lev in config.NEEDED_LEVELS:
+        parts, got = [], []
+        for k, dk in days.items():
+            sel = (dk >= t[0]) & (dk <= t[-1])
+            parts.append(np.load(GLORYS_TMP / f"b{k}_{lev:02d}.npy", mmap_mode="r")[sel])
+            got.append(dk[sel])
+        levels[lev] = np.concatenate(parts)
+        got = np.concatenate(got)
+    missing = [str(d) for d in np.setdiff1d(t, got)]
+    assert not missing, f"GLORYS days missing in {year}: {missing[:5]}"
     out = np.full((t.size, config.DEPTHS.size, config.NLAT, config.NLON), np.nan, np.float32)
     for n, (a, b, w) in enumerate(config.BRACKETS):
         # NaN in either bracketing level stays NaN: never extrapolated (hard rule 4).
         out[:, n] = (1 - w) * levels[a] + w * levels[b]
+    store = arco.open_store(GLORYS_ID, service="arco-time-series", raw=True)
     _write("glorys", year, t, {"thetao": out}, {
         "source": "glorys", "dataset_id": GLORYS_ID, "store": store.url,
         "variable": "thetao (sea_water_potential_temperature, degrees_C)",
@@ -309,12 +360,23 @@ def fetch(source: str, year: int) -> None:
     if cube_path(source, year).exists():
         return
     t0 = time.time()
-    if source == "glorys":
-        _fetch_glorys(year)
-    elif source in COPERNICUS:
-        _fetch_copernicus(source, year)
-    else:
-        _fetch_podaac(source, year)
+    # A campus link drops connections now and then (seen 2026-09-27 on the Earthdata
+    # login). A source-year is retried whole; the Copernicus chunk cache keeps what it had.
+    for attempt in range(6):
+        try:
+            if source == "glorys":
+                _fetch_glorys(year)
+            elif source in COPERNICUS:
+                _fetch_copernicus(source, year)
+            else:
+                _fetch_podaac(source, year)
+            break
+        except (OSError, RuntimeError, ConnectionError) as e:
+            if attempt == 5:
+                raise
+            print(f"{source} {year}: {type(e).__name__}: {e}; retry {attempt + 1} in "
+                  f"{60 * (attempt + 1)} s", flush=True)
+            time.sleep(60 * (attempt + 1))
     print(f"{source} {year} done in {time.time() - t0:.0f} s", flush=True)
 
 

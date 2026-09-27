@@ -51,6 +51,13 @@ The problem statement fixes 0.25° daily over 45–105°E × 5–30°N. DUACS is
 with cell centres at x.125. OSTIA (0.05°) and SSS (0.125°) divide into it exactly.
 GLORYS (1/12°) divides into it 3 × 3.
 
+> **Corrected 2026-09-27, on the data.** GLORYS divides into the grid three-to-one in
+> *size* but not in *alignment*: its centres sit on multiples of 1/12°, so the
+> 0.25° cell edges run through the middle of GLORYS cells. The exact conservative mean
+> is a 4-wide stencil at stride 3 with weights ½, 1, 1, ½ per axis (`grid.py`). OSCAR's
+> centres are on the quarter degree, half a cell off the lattice; it is shifted by the
+> mean of the four surrounding cells, which is an interpolation, and is labelled so.
+
 Domain: **240 lon × 100 lat = 24,000 cells** per day, before the land mask.
 
 > **Constraint:** the common grid is the DUACS lattice. Coarser-from-finer is always a

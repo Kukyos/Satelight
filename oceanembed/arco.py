@@ -217,8 +217,12 @@ def _cache_dir_for(url: str) -> Path:
 
 @lru_cache(maxsize=32)
 def open_store(dataset_id: str, service: str = "arco-geo-series",
-               part: str | None = None) -> OpenStore:
-    """Open one dataset's store for the life of the process. Thread-safe to read from."""
+               part: str | None = None, raw: bool = False) -> OpenStore:
+    """Open one dataset's store for the life of the process. Thread-safe to read from.
+
+    raw=True (added in OceanEmbed) leaves packed integers packed: scale_factor,
+    add_offset and _FillValue stay in the attributes for the caller to apply, so a bulk
+    read is not decoded to float64 on the way in."""
     import xarray as xr
     import zarr
     from copernicusmarine.core_functions.utils import parse_access_dataset_url
@@ -231,7 +235,7 @@ def open_store(dataset_id: str, service: str = "arco-geo-series",
     store = _store_class()(endpoint=endpoint, bucket=bucket, root_path=root, read_only=True,
                            cache_dir=_cache_dir_for(url), forecast=forecast)
     ds = xr.open_zarr(store, decode_times=True, decode_timedelta=True, zarr_format=2,
-                      chunks=None)
+                      chunks=None, mask_and_scale=not raw)
     return OpenStore(dataset_id, url, ds, forecast)
 
 

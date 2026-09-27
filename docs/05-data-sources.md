@@ -6,7 +6,8 @@ checked:
 - **resolved**: the link returns HTTP 200 and lands on the product page
 - **catalogue**: dataset IDs, variables, grid and time range read from the provider's
   catalogue (`copernicusmarine.describe` for Copernicus, NASA CMR for PO.DAAC)
-- **fetched**: real data downloaded and opened. **Nothing is at this level yet.**
+- **fetched**: real data downloaded and opened. Reached 2026-09-27 for every source
+  in §1–§5 (see "Measured on fetch" at the end).
 
 Nothing here is quoted from documentation unless it says so.
 
@@ -152,6 +153,27 @@ be decided on data, not here.
 - `earthaccess` or plain HTTPS with `.netrc` for PO.DAAC, once there is a login.
 - TLS verification stays on. If a host serves an incomplete certificate chain, fix it with
   `truststore` or a bundled intermediate, never by disabling verification.
+
+## Measured on fetch — 2026-09-27
+
+Raised to **fetched**. Each line was read from the data, not from documentation.
+
+| Source | What was measured |
+|---|---|
+| GLORYS12 `thetao` | Read through the ARCO **time-series** store (`geoChunked.zarr`, the toolbox calls it `arco-time-series`). Chunks are 2081 days × 1 level × 16 × 16 cells, packed int16 (scale 0.000732, offset 21, fill −32767). In that store the vertical axis is `elevation`, **deepest first** (index 0 is −5727.9 m), so levels are selected by value. 50 levels, top 0.494 m. Time blocks start 1993-01-01, 1998-09-13, 2004-05-25, **2010-02-04**, 2015-10-17, 2021-06-28; the record runs to 2026-06-23 with real values after mid-2021. One level of one block over the box is ≈ 640 MB compressed. Cell centres on multiples of 1/12°, so they straddle the 0.25° cell edges (see `03-limitations.md` L4). |
+| GLORYS static `deptho` | `static-arco` part `bathy`. 7 m to 5,284 m over the box. |
+| OSTIA | Centres at x.025 (0.05°), so 5 × 5 blocks nest exactly in the 0.25° cells. `analysed_sst` in kelvin; converted to °C and the conversion recorded. |
+| SSS (reprocessed) | Centres at x.0625 (0.125°), so 2 × 2 blocks nest exactly. |
+| DUACS twosat | Centres at x.125: the common grid itself. `adt`, `sla` in metres. |
+| OSCAR final v2.0 | Global 0.25° daily file, 33 MB, uncompressed chunks of 720 lon × 360 lat. Centres on the quarter degree (0.00, 0.25, …), stored (time, **longitude**, latitude). Fetched as a **server-side OPeNDAP subset** (`opendap.earthdata.nasa.gov`, DAP4), 0.2 MB and ≈ 3.6 s a day. |
+| CCMP v3.1 | Global 0.25° file, 33 MB, 4 synoptic times, zlib chunks of the whole globe per time. Centres at x.125. Fetched as an OPeNDAP subset, 0.75 MB and ≈ 6 s a day. The product is "RSS VAM 6-hour analyses using ERA-5 wind reanalysis as background": satellite winds blended over a reanalysis background, stated where the inputs are described. |
+| Argo (Ifremer ERDDAP `ArgoFloats`) | Test block 2023-01-01 → 2024-12-15 over the box: 6,345 casts, 8,500 levels failing QC (kept, marked). |
+| INCOIS ERDDAP `incois_argo_10d_VAM` | Reachable with TLS verification on (truststore on Windows; bundled GlobalSign intermediate elsewhere). 24 levels 5–2000 m, 1°, ≈ 10-day steps, TEMP labelled `degs`. |
+
+**The campus network.** It intercepts some hosts with its own certificate
+(`download-r2.pytorch.org` answered with `*.karunya.edu`), and it resets connections now
+and then. TLS verification stays on everywhere; hosts that fail are routed around, never
+trusted blindly.
 
 ## Re-probing
 
