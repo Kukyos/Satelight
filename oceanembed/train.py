@@ -14,6 +14,7 @@ import shutil
 import sys
 import time
 import tomllib
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +27,7 @@ from .model import OceanEmbed, masked_mse
 def load_config(path: str | Path) -> dict:
     cfg = tomllib.loads(Path(path).read_text())
     cfg.setdefault("inputs", config.INPUTS)
+    cfg.setdefault("lags", [0])
     return cfg
 
 
@@ -37,17 +39,51 @@ def seed_everything(seed: int) -> None:
     torch.backends.cudnn.deterministic = True
 
 
+def _pieces(a: date, b: date) -> list[tuple[date, date]]:
+    return [(max(a, date(y, 1, 1)), min(b, date(y, 12, 31))) for y in range(a.year, b.year + 1)]
+
+
 def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
-    x, y, t = data.load_raw(split, cfg["inputs"])
+    """A split as normalised float16 arrays, loaded a year at a time so that raw float32
+    never has to fit in memory whole. Statistics, when not given, come from a first pass
+    over the same years (train block only)."""
+    # A config may narrow or widen a split (smoke tests, the extended comparison); by
+    # default the blocks in config.SPLITS are used. The test block is never loaded here.
+    span = cfg.get("splits", {}).get(split)
+    a, b = tuple(date.fromisoformat(d) for d in span) if span else config.SPLITS[split]
+    pieces = _pieces(a, b)
     if stats is None:
-        stats = data.compute_stats(x, y)
-    xa = data.assemble(x, t, stats, sea)
-    yn = data.normalise_target(y, stats)
-    return xa, yn, t, stats
+        nx = ny = None
+        for p in pieces:
+            x, y, _ = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
+            part = [np.nansum(x, axis=(0, 2, 3), dtype=np.float64),
+                    np.nansum(x.astype(np.float64) ** 2, axis=(0, 2, 3)),
+                    np.isfinite(x).sum(axis=(0, 2, 3)),
+                    np.nansum(y, axis=(0, 2, 3), dtype=np.float64),
+                    np.nansum(y.astype(np.float64) ** 2, axis=(0, 2, 3)),
+                    np.isfinite(y).sum(axis=(0, 2, 3))]
+            nx = part if nx is None else [u + v for u, v in zip(nx, part)]
+            del x, y
+        xm, ym = nx[0] / nx[2], nx[3] / nx[5]
+        stats = data.Stats(xm, np.sqrt(nx[1] / nx[2] - xm ** 2), ym, np.sqrt(nx[4] / nx[5] - ym ** 2))
+    # Filled in place: concatenating year pieces would hold every year twice.
+    n = (b - a).days + 1
+    shape = (config.NLAT, config.NLON)
+    xa = np.empty((n, data.n_channels(cfg["inputs"], cfg["lags"])) + shape, np.float16)
+    yn = np.empty((n, config.DEPTHS.size) + shape, np.float16)
+    ts, k = [], 0
+    for p in pieces:
+        x, y, t = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
+        xa[k:k + len(t)] = data.assemble(x, t, stats, sea)
+        yn[k:k + len(t)] = data.normalise_target(y, stats)
+        ts.append(t)
+        k += len(t)
+        del x, y
+    return xa[:k], yn[:k], np.concatenate(ts), stats
 
 
 def build(cfg: dict) -> OceanEmbed:
-    return OceanEmbed(data.n_channels(cfg["inputs"]), cfg["arch"], cfg.get("emb", 32),
+    return OceanEmbed(data.n_channels(cfg["inputs"], cfg["lags"]), cfg["arch"], cfg.get("emb", 32),
                       cfg.get("daily", 64), width=cfg.get("width", 32))
 
 

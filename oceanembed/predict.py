@@ -38,7 +38,8 @@ def predict_span(run: str, a: date, b: date, with_embedding: bool = False,
                  batch: int = 8):
     """(T, 15, H, W) degrees C with the shelf masked, days, and optionally embeddings."""
     model, cfg, stats = load_model(run)
-    x, _, t = data.load_raw("span", cfg["inputs"], with_target=False, span=(a, b))
+    x, _, t = data.load_raw("span", cfg["inputs"], with_target=False, span=(a, b),
+                            lags=cfg["lags"])
     sea = data.sea_mask()
     xa = data.assemble(x, t, stats, sea)
     del x

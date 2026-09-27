@@ -11,6 +11,7 @@ cache, so a half-finished year does not re-download what it already had.
     python -m oceanembed.fetch glorys 2015        # one source, one year
     python -m oceanembed.fetch all                # every source, every year of the window
     python -m oceanembed.fetch static
+    python -m oceanembed.fetch all extended       # 1993-2009, for the D-07 comparison
 """
 
 from __future__ import annotations
@@ -50,7 +51,8 @@ def cube_path(source: str, year: int) -> Path:
 
 
 def year_days(year: int) -> np.ndarray:
-    lo = max(date(year, 1, 1), config.WINDOW[0])
+    # Years before the window are whole years, for the extended comparison (D-07).
+    lo = date(year, 1, 1) if year < config.WINDOW[0].year else max(date(year, 1, 1), config.WINDOW[0])
     hi = min(date(year, 12, 31), config.WINDOW[1])
     return config.days(lo, hi)
 
@@ -102,18 +104,29 @@ def _time_index(ds, t: np.ndarray) -> tuple[np.ndarray, list[str]]:
     return np.where(ok, pos, -1), missing
 
 
+def _decode(packed: np.ndarray, attrs: dict) -> np.ndarray:
+    """Packed store values to float32 physical values; the fill value becomes NaN."""
+    v = packed.astype(np.float32)
+    fill = attrs.get("_FillValue")
+    if fill is not None:
+        v[packed == fill] = np.nan
+    return v * np.float32(attrs.get("scale_factor", 1.0)) + np.float32(attrs.get("add_offset", 0.0))
+
+
 def _read_days(da, pos: np.ndarray, sel: dict) -> np.ndarray:
-    """Contiguous runs of present days, read one run at a time (a run is one zarr read)."""
+    """Contiguous runs of present days, each read in one go from a store opened raw.
+
+    One read per run means each time chunk is decompressed once, not once per slice
+    (measured 2026-09-27: month-by-month reads pinned a core)."""
     out = np.full((pos.size,) + tuple(s.stop - s.start for s in sel.values()), np.nan, np.float32)
     present = np.flatnonzero(pos >= 0)
     if present.size == 0:
         return out
     breaks = np.flatnonzero(np.diff(pos[present]) != 1) + 1
     for run in np.split(present, breaks):
-        # A month at a time bounds memory: the store decodes int16 to float64.
-        for part in np.array_split(run, max(1, run.size // 31)):
-            a = da.isel(time=slice(int(pos[part[0]]), int(pos[part[-1]]) + 1), **sel).values
-            out[part] = a.astype(np.float32)
+        packed = da.isel(time=slice(int(pos[run[0]]), int(pos[run[-1]]) + 1), **sel).values
+        for s0 in range(0, len(run), 64):
+            out[run[s0:s0 + 64]] = _decode(packed[s0:s0 + 64], da.attrs)
     return out
 
 
@@ -121,7 +134,7 @@ def _fetch_copernicus(source: str, year: int) -> None:
     from . import arco
 
     dataset_id, variables, st = COPERNICUS[source]
-    store = arco.open_store(dataset_id, service="arco-time-series")
+    store = arco.open_store(dataset_id, service="arco-time-series", raw=True)
     ds = store.ds
     step = float(np.diff(ds["latitude"].values[:2])[0])
     ys, xs = _window(ds, st, step)
@@ -158,7 +171,7 @@ def _glorys_block(k: int) -> None:
     ds = store.ds
     ys, xs = _window(ds, grid.GLORYS, 1 / 12)
     t = ds["time"].values.astype("datetime64[D]")[k * GLORYS_BLOCK:(k + 1) * GLORYS_BLOCK]
-    keep = (t >= np.datetime64(config.WINDOW[0])) & (t <= np.datetime64(config.WINDOW[1]))
+    keep = (t >= np.datetime64(config.EXTENDED_START)) & (t <= np.datetime64(config.WINDOW[1]))
     i0, i1 = k * GLORYS_BLOCK + int(np.argmax(keep)), k * GLORYS_BLOCK + int(keep.sum()) + int(np.argmax(keep))
     GLORYS_TMP.mkdir(parents=True, exist_ok=True)
     np.save(GLORYS_TMP / f"b{k}_days.npy", t[keep])
@@ -391,7 +404,10 @@ if __name__ == "__main__":
         print("static done")
         sys.exit()
     wanted = SOURCES if args[:1] == ["all"] else [args[0]]
-    ys = [int(a) for a in args[1:]] or years()
+    if args[1:2] == ["extended"]:
+        ys = list(range(config.EXTENDED_START.year, config.WINDOW[0].year))
+    else:
+        ys = [int(a) for a in args[1:]] or years()
     for s in wanted:
         for y in ys:
             fetch(s, y)

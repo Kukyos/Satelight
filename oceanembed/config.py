@@ -73,6 +73,12 @@ OCEAN_FRACTION_MIN = 0.5
 # needed (D-06).
 WINDOW = (date(2010, 2, 4), date(2024, 12, 15))
 
+# The extended comparison (docs/11-deferred.md D-07): the same model trained from 1993,
+# the first year every source covers. Salinity before about 2010 is not from SMOS or
+# SMAP, so any run that uses these years is labelled as the extended-window comparison,
+# never as the model. Validation and test blocks are unchanged.
+EXTENDED_START = date(1993, 1, 1)
+
 # Contiguous blocks, a month or more apart. The test block is never touched in training
 # or model selection (hard rule 6).
 SPLITS = {

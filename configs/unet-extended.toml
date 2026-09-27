@@ -1,0 +1,14 @@
+# The extended-window comparison (docs/11-deferred.md D-07): the unet config trained
+# from 1993. Salinity before ~2010 is not satellite salinity (SMOS launched 2009), so this
+# run is a labelled comparison, not the model. Validation and test blocks are unchanged.
+name = "unet-extended"
+arch = "unet"
+seed = 26066
+emb = 32
+daily = 64
+width = 32
+epochs = 25
+batch = 8
+lr = 2e-3
+[splits]
+train = ["1993-01-01", "2020-12-31"]

@@ -13,7 +13,7 @@ the val and test blocks never inform them (hard rule 6).
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -74,18 +74,35 @@ class Stats:
 
 
 def load_raw(split: str, inputs: list[str], with_target: bool = True,
-             span: tuple[date, date] | None = None):
-    """Raw physical fields for a split (or any span): inputs (T, C, H, W), target
-    (T, 15, H, W) or None, and the days. Days where any input is missing are dropped and
-    reported."""
+             span: tuple[date, date] | None = None, lags: list[int] = (0,)):
+    """Raw physical fields for a split (or any span): inputs (T, C x len(lags), H, W),
+    target (T, 15, H, W) or None, and the days. Days where any input is missing are
+    dropped and reported.
+
+    `lags` stacks each input as it was that many days earlier (0 is today). The earlier
+    days are read from before the span where they exist; they are satellite inputs only,
+    so reaching into the gap before a block never touches a target (hard rule 6)."""
     a, b = span or config.SPLITS[split]
+    lead = max(lags)
+    a0 = max(a - timedelta(days=lead), min(a, config.WINDOW[0]))
     chans, t = [], None
     for v in inputs:
-        arr, tv = _read(SOURCE_OF[v], v, a, b)
+        arr, tv = _read(SOURCE_OF[v], v, a0, b)
         assert t is None or np.array_equal(t, tv), f"time axes differ at {v}"
         t = tv
         chans.append(arr)
-    x = np.stack(chans, axis=1)
+    full = np.stack(chans, axis=1)
+    keep = t >= np.datetime64(a)
+    days = t[keep]
+    # Each lag is the input on (day - lag), or the earliest day held if that is before
+    # the record (only the first `lead` days of the window are affected).
+    stack = []
+    for lag in lags:
+        idx = np.clip(np.searchsorted(t, days - np.timedelta64(lag, "D")), 0, t.size - 1)
+        stack.append(full[idx])
+    x = np.concatenate(stack, axis=1)
+    del full, stack
+    t = days
     y = None
     if with_target:
         y, ty = _read("glorys", "thetao", a, b)
@@ -139,5 +156,5 @@ def denormalise_target(yn: np.ndarray, stats: Stats) -> np.ndarray:
     return yn * stats.y_std[None, :, None, None] + stats.y_mean[None, :, None, None]
 
 
-def n_channels(inputs: list[str]) -> int:
-    return len(inputs) + 3 + 2 + 1
+def n_channels(inputs: list[str], lags: list[int] = (0,)) -> int:
+    return len(inputs) * len(lags) + 3 + 2 + 1
