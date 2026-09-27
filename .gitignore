@@ -38,3 +38,8 @@ dist/
 # Portal templates, kept local
 *.pptx
 *.docx
+
+# Local wheels (network blocks the PyTorch CDN)
+.wheels/
+data/logs/
+data/output/

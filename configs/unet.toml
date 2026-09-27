@@ -1,0 +1,10 @@
+# U-Net encoder (problem statement 4a), 32-number embedding per cell.
+name = "unet"
+arch = "unet"
+seed = 26066
+emb = 32
+daily = 64
+width = 32
+epochs = 40
+batch = 8
+lr = 2e-3

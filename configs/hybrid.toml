@@ -1,0 +1,10 @@
+# Convolutional stem + transformer over the basin + conv up-path (problem statement 4e).
+name = "hybrid"
+arch = "hybrid"
+seed = 26066
+emb = 32
+daily = 64
+width = 32
+epochs = 40
+batch = 8
+lr = 1e-3

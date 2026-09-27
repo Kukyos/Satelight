@@ -1,0 +1,11 @@
+# Ablation: SST, SSS and sea level only. Measures what the PO.DAAC inputs add.
+name = "unet-no-currents-winds"
+arch = "unet"
+seed = 26066
+inputs = ["sst", "sss", "adt", "sla"]
+emb = 32
+daily = 64
+width = 32
+epochs = 40
+batch = 8
+lr = 2e-3

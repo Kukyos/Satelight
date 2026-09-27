@@ -1,0 +1,120 @@
+"""The bars a model has to clear, fitted on the train block only.
+
+climatology   GLORYS day-of-year mean over the train block, smoothed with a +/-15-day
+              circular window. The floor: it knows the season and the place, nothing
+              about today.
+linear        one ridge regression per cell, from that cell's eight satellite channels
+              and the day of year to its 15 depths. Knows today, but only through a
+              straight line at one point.
+
+    python -m oceanembed.baselines          # fit both, write runs/climatology, runs/linear
+"""
+
+from __future__ import annotations
+
+from datetime import date
+
+import numpy as np
+import torch
+
+from . import config, data
+
+SMOOTH_DAYS = 15
+RIDGE = 1e-2
+
+
+def _doy(t: np.ndarray) -> np.ndarray:
+    """0..365, with 29 February folded onto 28 February so every year has 365 slots."""
+    doy = (t - t.astype("datetime64[Y]")).astype(int)
+    leap = (t.astype("datetime64[Y]").astype(int) + 1970) % 4 == 0
+    return np.where(leap & (doy >= 59), doy - 1, doy)
+
+
+def fit_climatology() -> None:
+    a, b = config.SPLITS["train"]
+    s = np.zeros((365, 15, config.NLAT, config.NLON), np.float64)
+    n = np.zeros_like(s)
+    for y in range(a.year, b.year + 1):
+        yv, t = data._read("glorys", "thetao", max(a, date(y, 1, 1)), min(b, date(y, 12, 31)))
+        d = _doy(t)
+        ok = np.isfinite(yv)
+        np.add.at(s, d, np.where(ok, yv, 0.0))
+        np.add.at(n, d, ok)
+    # Circular +/-15-day smoothing over the day-of-year axis.
+    k = np.arange(-SMOOTH_DAYS, SMOOTH_DAYS + 1)
+    ss = sum(np.roll(s, i, axis=0) for i in k)
+    nn = sum(np.roll(n, i, axis=0) for i in k)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        clim = np.where(nn > 0, ss / nn, np.nan).astype(np.float32)
+    out = config.RUNS / "climatology"
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(out / "clim.npy", clim)
+    print("climatology: fitted on", a, "->", b)
+
+
+def climatology(t: np.ndarray) -> np.ndarray:
+    clim = np.load(config.RUNS / "climatology" / "clim.npy", mmap_mode="r")
+    return np.asarray(clim[_doy(t)])
+
+
+def _features(x: np.ndarray, t: np.ndarray, stats: data.Stats) -> np.ndarray:
+    """(T, C, H, W) raw -> (T, H*W, C+3): normalised channels, sin/cos day, bias."""
+    xn = np.nan_to_num((x - stats.x_mean[None, :, None, None]) / stats.x_std[None, :, None, None])
+    T = x.shape[0]
+    doy = data.doy_fields(t)
+    f = np.concatenate([xn.reshape(T, x.shape[1], -1),
+                        np.broadcast_to(doy[:, :, None], (T, 2, xn.shape[2] * xn.shape[3])),
+                        np.ones((T, 1, xn.shape[2] * xn.shape[3]), np.float32)], axis=1)
+    return f.transpose(0, 2, 1).astype(np.float32)
+
+
+def fit_linear() -> None:
+    x, y, t = data.load_raw("train", config.INPUTS)
+    stats = data.compute_stats(x, y)
+    f = torch.from_numpy(_features(x, t, stats)).cuda()             # (T, P, F)
+    yt = torch.from_numpy(y.reshape(len(y), 15, -1).transpose(0, 2, 1).copy()).cuda()  # (T, P, 15)
+    ok = torch.isfinite(yt)
+    yt = torch.nan_to_num(yt)
+    nf = f.shape[-1]
+    coef = torch.zeros(f.shape[1], nf, 15, device="cuda")
+    # A level missing at a cell is missing on every day (a static mask), so one solve
+    # per cell covers every level that exists there.
+    for i in range(0, f.shape[1], 2000):
+        fi = f[:, i:i + 2000].transpose(0, 1)                          # (p, T, F)
+        yi = yt[:, i:i + 2000].transpose(0, 1)
+        xtx = fi.transpose(1, 2) @ fi + RIDGE * len(t) * torch.eye(nf, device="cuda")
+        coef[i:i + 2000] = torch.linalg.solve(xtx, fi.transpose(1, 2) @ yi)
+    level_ok = ok.all(dim=0)                                           # (P, 15)
+    out = config.RUNS / "linear"
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(out / "coef.npy", coef.cpu().numpy())
+    np.save(out / "level_ok.npy", level_ok.cpu().numpy())
+    stats.save(out / "stats.json")
+    print("linear: fitted on", len(t), "train days")
+
+
+def linear(x: np.ndarray, t: np.ndarray) -> np.ndarray:
+    out = config.RUNS / "linear"
+    coef = torch.from_numpy(np.load(out / "coef.npy")).cuda()
+    level_ok = np.load(out / "level_ok.npy")
+    stats = data.Stats.load(out / "stats.json")
+    f = torch.from_numpy(_features(x, t, stats)).cuda()
+    p = torch.einsum("tpf,pfl->tpl", f, coef).cpu().numpy()
+    p[:, ~level_ok] = np.nan
+    return p.transpose(0, 2, 1).reshape(len(t), 15, config.NLAT, config.NLON)
+
+
+def demo() -> None:
+    t = np.array(["2011-02-28", "2012-02-29", "2012-03-01", "2011-12-31", "2012-12-31"],
+                 dtype="datetime64[D]")
+    assert _doy(t).tolist() == [58, 58, 59, 364, 364], _doy(t)
+    print("baselines ok: leap days fold onto 365 slots")
+
+
+if __name__ == "__main__":
+    import sys
+    if "--demo" in sys.argv:
+        demo()
+    else:
+        fit_climatology()
+        fit_linear()
