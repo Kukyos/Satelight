@@ -32,13 +32,20 @@ What the development runs showed, in words (their figures are in the harness rep
 
 What the test block showed, in words (figures in `13-eval-results.md`):
 
-- **Against Argo** every model beats the climatology floor from the surface to about
-  300 m, in both basins, and stays below the GLORYS ceiling. From 500 to 700 m the
-  models are level with climatology; at 1000 m slightly worse.
-- **Thermocline warm bias.** Around 75–150 m the models run warm against Argo, more
-  than GLORYS does. It fits the warming trend above.
+- **Against Argo** the headline (hybrid) beats the climatology floor from the surface
+  to 300 m, over the whole box and in each basin, and stays below the GLORYS ceiling.
+  From 500 to 700 m it is level with climatology; at 1000 m slightly worse. Not every
+  contender clears the floor everywhere: the linear baseline loses to climatology near
+  the surface.
+- **Thermocline warm bias.** Around 75–150 m the models run warm against Argo. Over the
+  whole box and in the Arabian Sea the warm bias is larger than GLORYS's; in the Bay of
+  Bengal it is about equal to GLORYS's at 75–100 m and larger only at 125–150 m. It fits
+  the warming trend above.
 - **INCOIS gridded Argo** agrees with Argo much less well than GLORYS at its own
-  resolution (`03-limitations.md` L6), so it is reported with that caveat.
+  resolution (`03-limitations.md` L6). Scored against INCOIS, climatology has the lowest
+  RMSE at nearly every depth, ahead of every model and of GLORYS itself, even though
+  GLORYS assimilated those Argo floats. The Argo casts are the validation; INCOIS is
+  reported beside them with that caveat.
 - **Embedding (S4) not met.** Details and the reason in `02-requirements.md` S4.
 
 Data issue found and fixed on the way: CCMP has 18 days with a granule but no daily wind
