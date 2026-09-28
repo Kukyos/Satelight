@@ -24,6 +24,12 @@ def test_cube_file(path):
         prov = json.loads(ds.attrs["provenance"])
         assert prov.get("regrid"), "hard rule 5: the regrid method is recorded"
         assert "missing_days" in prov, "missing days are recorded, even when none"
+        logged = set(prov["missing_days"]) | set(prov.get("empty_days", []))
+        for v in ds.data_vars:
+            a = ds[v].values
+            empty = np.isnan(a.reshape(a.shape[0], -1)).all(axis=1)
+            unlogged = set(t[empty].astype(str)) - logged
+            assert not unlogged, f"S2b: {v} has no value on unlogged days {sorted(unlogged)}"
         if path.parent.name == "glorys":
             assert np.array_equal(ds["depth"].values, config.DEPTHS), "S6a: exactly the 15 depths"
             v = ds["thetao"].isel(time=0).values

@@ -64,6 +64,14 @@ def _write(source: str, year: int, t: np.ndarray, data: dict, provenance: dict,
     if depth:
         coords["depth"] = config.DEPTHS
     ds = xr.Dataset({k: (dims, v.astype(np.float32)) for k, v in data.items()}, coords=coords)
+    # A day the source has but that holds no value over the box (e.g. CCMP 2024-08-31,
+    # whose 18 UTC analysis is empty) is recorded too; the key appears only when needed.
+    empty = np.zeros(t.size, bool)
+    for v in data.values():
+        empty |= np.isnan(v.reshape(t.size, -1)).all(axis=1)
+    empty = sorted(set(t[empty].astype(str)) - set(provenance.get("missing_days", [])))
+    if empty:
+        provenance = {**provenance, "empty_days": empty}
     ds.attrs["provenance"] = json.dumps(provenance)
     path = cube_path(source, year)
     path.parent.mkdir(parents=True, exist_ok=True)
