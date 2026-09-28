@@ -131,7 +131,7 @@ async function drawCube(fly = false): Promise<void> {
     const widthM = (r.lons[r.lons.length - 1] - r.lons[0]) * 111_320;
     cube.render(data, { lon0: r.lons[0], lon1: r.lons[r.lons.length - 1], lat0: r.lats[0],
                         lat1: r.lats[r.lats.length - 1], top: 0, bottom: 1000 },
-                s, widthM * 0.28);
+                s, widthM * 0.36);
     legend(s);
     drawCasts();
     notice(null);
@@ -146,7 +146,7 @@ function aim(): void {
   const x = cube.extent();
   const centre = Cartesian3.fromDegrees(x.lon, x.lat, x.mid);
   viewer.camera.flyToBoundingSphere(new BoundingSphere(centre, x.widthM * 0.55), {
-    offset: new HeadingPitchRange(0.25, -0.42, x.widthM * 1.35), duration: 1.6,
+    offset: new HeadingPitchRange(0.42, -0.36, x.widthM * 1.9), duration: 1.6,
   });
 }
 
@@ -276,7 +276,7 @@ async function drawProfile(): Promise<void> {
   const svg = document.getElementById("profile") as unknown as SVGSVGElement;
   const depths = meta.depths;
   if (!selected) {
-    depthChart(svg, depths, [], { xLabel: "temperature (°C)" });
+    svg.replaceChildren();
     return;
   }
   let series: Series[] = [];
@@ -456,7 +456,10 @@ async function start(): Promise<void> {
     const b = meta.regions[state.region];
     return c.lon >= b.lon[0] && c.lon <= b.lon[1] && c.lat >= b.lat[0] && c.lat <= b.lat[1];
   });
-  if (first) selected = { kind: "cast", cast: first };
+  // Otherwise the column at the middle of the basin, so the right dock is never empty.
+  const b = meta.regions[state.region];
+  selected = first ? { kind: "cast", cast: first }
+    : { kind: "cell", lat: (b.lat[0] + b.lat[1]) / 2, lon: (b.lon[0] + b.lon[1]) / 2 };
   await drawProfile();
 }
 

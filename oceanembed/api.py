@@ -83,6 +83,8 @@ def field(name: str, day: str) -> np.ndarray:
             return ds["thetao"].sel(time=str(d)).values
     if name == "climatology":
         from .baselines import climatology
+        if not (config.RUNS / "climatology" / "clim.npy").exists():
+            raise HTTPException(404, "the climatology baseline has not been fitted")
         return climatology(np.array([d]))[0]
     if name == "error":
         return field("oceanembed", day) - field("glorys", day)
@@ -135,12 +137,12 @@ def inputs(day: str):
             continue
         with xr.open_dataset(path) as ds:
             a = ds[k].sel(time=str(d)).values
+            prov = json.loads(ds.attrs.get("provenance", "{}"))
         f = a[np.isfinite(a)]
         lo, hi = (np.percentile(f, [2, 98]) if f.size else (0, 1))
         out.append({"key": k, "title": INPUT_TITLES[k], "units": INPUT_UNITS[k],
                     "range": [float(lo), float(hi)], "values": b64(a),
-                    "source": json.loads(ds.attrs.get("provenance", "{}")).get("dataset_id")
-                    or json.loads(ds.attrs.get("provenance", "{}")).get("short_name")})
+                    "source": prov.get("dataset_id") or prov.get("short_name")})
     return {"day": day, "shape": [config.NLAT, config.NLON], "inputs": out}
 
 

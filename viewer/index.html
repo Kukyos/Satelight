@@ -37,7 +37,8 @@
   .seg button:hover { color: var(--mist); }
   .seg button[aria-pressed="true"] { background: var(--mist); color: var(--abyss); font-weight: 600; }
 
-  aside { background: var(--abyss); overflow-y: auto; min-height: 0; padding: 16px 16px 20px; }
+  aside { background: var(--abyss); overflow-y: auto; min-height: 0; padding: 16px 16px 20px;
+    scrollbar-width: thin; scrollbar-color: var(--shelf-hi) transparent; }
   #left { grid-area: left; } #right { grid-area: right; }
   h2 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
   .lede { color: var(--slate); margin: 0 0 12px; font-size: 12px; }
@@ -57,7 +58,7 @@
   #view { grid-area: view; position: relative; min-height: 0; background: var(--abyss); }
   #globe { position: absolute; inset: 0; }
   #globe .cesium-viewer-bottom, #globe .cesium-widget-credits { display: none !important; }
-  .stamp { position: absolute; left: 22px; bottom: 16px; pointer-events: none;
+  .stamp { position: absolute; left: 22px; top: 14px; pointer-events: none;
     text-shadow: 0 2px 18px rgba(0,0,0,.6); }
   .stamp .date { font-family: "Instrument Serif", Georgia, serif; font-size: 56px; line-height: 1; }
   .stamp .what { color: var(--slate); margin-top: 6px; font-size: 13px; }

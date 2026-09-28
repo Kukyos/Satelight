@@ -10,7 +10,7 @@ writes, per day,
 and, per year, the embedding artefact (docs/03-limitations.md L10)
 
     data/output/embedding/<run>_YYYY.nc
-        cell  (time, feature: 32, lat, lon)   float16, the per-cell embedding
+        cell  (time, feature: 32, lat, lon)   float32, the per-cell embedding
         daily (time, feature: 64)             the per-day embedding
 
 Every file carries the same provenance the training cube did, plus the run's config.
@@ -50,7 +50,7 @@ def predict_span(run: str, a: date, b: date, with_embedding: bool = False,
             e, g = model.embed(xb)
             preds.append(model.decoder(e).float().cpu().numpy())
             if with_embedding:
-                cells.append(e.float().cpu().numpy().astype(np.float16))
+                cells.append(e.float().cpu().numpy())
                 days.append(g.float().cpu().numpy())
     y = data.denormalise_target(np.concatenate(preds), stats).astype(np.float32)
     y[:, ~level_mask()] = np.nan
@@ -116,7 +116,8 @@ def write_embedding(run: str, emb, t: np.ndarray) -> None:
                    coords={"time": t[k].astype("datetime64[ns]"), "lat": config.LAT,
                            "lon": config.LON},
                    attrs={"model_run": run}
-                   ).to_netcdf(EMB_DIR / f"{run}_{y}.nc")
+                   ).to_netcdf(EMB_DIR / f"{run}_{y}.nc",
+                               encoding={"cell": {"zlib": True, "complevel": 1}})
 
 
 if __name__ == "__main__":
