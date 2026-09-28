@@ -109,7 +109,7 @@ HTTP_TIMEOUT = 120
 
 
 def days(start: date, end: date) -> np.ndarray:
-    return np.arange(np.datetime64(start), np.datetime64(end) + 1, dtype="datetime64[D]")
+    return np.arange(np.datetime64(start), np.datetime64(end, "D") + np.timedelta64(1, "D"), dtype="datetime64[D]")
 
 
 def demo() -> None:
