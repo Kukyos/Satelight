@@ -69,13 +69,13 @@ with stdout and stderr to `data/logs/`). Keep the machine plugged in and awake.
 
 ## Left before every requirement is `done`
 
-1. **S4 / E2: the embedding.** Not met on the first harness run. Either kept `wip` with
-   the reason shown honestly, or new encoder work (for example a self-supervised
-   objective) as a new candidate, chosen again on the validation block only.
+1. **S4 / E2: a different encoder** (D-09), decided 2026-09-28. If it becomes the
+   headline, the output, the harness report, the viewer review and the deck are redone,
+   so the deck waits for it.
 2. **E6: review the viewer on the real model** over both basins. The error view and the
    Argo casts come from the harness output.
 3. **Open ledger items.**
-   - D-03: ask INCOIS for the LAS endpoint.
+   - D-03: INCOIS LAS endpoint, left deferred (2026-09-28).
    - D-06: measure the salinity reprocessed/real-time join before extending the output
      past 2024-12-15.
 4. **Move the project to `G:\Projects\SIH26P4`** once nothing is running. Keep
