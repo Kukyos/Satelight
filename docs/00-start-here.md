@@ -20,6 +20,8 @@ depth and in each basin.
 | `02-requirements.md` | Every "shall" and every expected-solution bullet, with its deliverable and its proof. | Before starting any piece of work; update the status when it's done. |
 | `03-limitations.md` | The structural limits, and the constraint each one forces. | Before designing anything. L1 (independence) and L2 (splits) decide whether the results mean anything. |
 | `05-data-sources.md` | Every source, and how far each was actually checked. | Before writing an ingest path or quoting a dataset. |
+| `06-method.md` | The design, step by step, and why each choice was made. | Before changing the pipeline or the model. |
+| `12-status-and-plan.md` | What is done, what was interrupted, the exact commands to resume, and what is left. | At the start of every session. |
 | `10-unsourced.md` | Values we are using without a source. | Before quoting any value. |
 | `11-deferred.md` | Everything knowingly incomplete, with what it blocks. | The live status doc. |
 | `13-eval-results.md` | Generated numbers. Never hand-edited. | Whenever an accuracy claim is questioned. |
