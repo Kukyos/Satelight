@@ -17,7 +17,7 @@ they come only from the harness, in `13-eval-results.md`.
 | Training recipe chosen on the validation block | `configs/dev/` | Reported by the harness under "How the training recipe was chosen" |
 | Output writer (daily NetCDF), manifest of skipped days, embedding artefact | `oceanembed/predict.py`, `data/output/` | `tests/test_output.py` |
 | Harness: Argo and INCOIS gridded Argo, per depth and basin, beside climatology and GLORYS; INCOIS range test and its own agreement with Argo; validation-only model selection; embedding inspection with controls | `oceanembed/evaluate.py`, `embed.py` | `evaluate.demo()`, `embed.demo()`; the first full report is `13-eval-results.md` (2026-09-28) |
-| All five runs trained; headline named on validation loss alone: **hybrid** | `runs/` | Harness, "Model selection" |
+| All five runs trained; headline named on the validation block alone: **hybrid**. *2026-09-28: the rule compares mean validation RMSE in °C, not normalised loss, which is not comparable across absolute and anomaly targets; the hybrid is the headline under both* | `runs/` | Harness, "Model selection" |
 | PoC viewer and API (E6) | `viewer/`, `oceanembed/api.py`, `start.bat` / `start.sh` | Reviewed on the hybrid output over both basins, 2026-09-28; `data/figures/viewer_*.jpg` |
 
 What the development runs showed, in words (their figures are in the harness report):
@@ -56,10 +56,12 @@ fails on any empty day that is not logged.
 ## Reproduce
 
 ```
-python -m oceanembed.train configs/<run>.toml        # unet, hybrid, unet-history,
+python -m oceanembed.train configs/<run>.toml        # unet, hybrid, unet-abs, hybrid-abs, unet-history,
                                                      # unet-no-currents-winds, unet-extended
 python -c "from oceanembed.evaluate import selection; print(selection()['headline'])"
 python -m oceanembed.predict hybrid 2023-01-01 2024-12-15
+python -m oceanembed.predict <S4 run> 2023-01-01 2024-12-15 --embedding-only
+                                                     # when S4 is carried by another run
 python -m oceanembed.evaluate                        # writes 13-eval-results.md
 start.bat          (or ./start.sh)
 ```

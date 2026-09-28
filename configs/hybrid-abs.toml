@@ -1,0 +1,13 @@
+# Hybrid learning absolute temperature (D-09). No crops: the hybrid needs the whole basin.
+name = "hybrid-abs"
+role = "candidate"
+arch = "hybrid"
+seed = 26066
+emb = 32
+target = "absolute"
+batch = 8
+lr = 1e-3
+epochs = 20
+dropout = 0.1
+wd = 1e-2
+noise = 0.1

@@ -100,8 +100,9 @@ ROLE_NOTE = {
 
 def selection() -> dict:
     """The headline model, chosen on the validation block only (hard rule 6), before any
-    test number is computed: the candidate with the lowest best validation loss. All
-    candidates share the train block, so their normalised losses are comparable."""
+    test number is computed: the candidate with the lowest validation RMSE in degrees C,
+    averaged over the 15 depths, at its best epoch. Normalised losses are not compared
+    across runs: each target (absolute or anomaly) is normalised by its own spread."""
     from .train import load_config
 
     runs, development = {}, {}
@@ -120,12 +121,15 @@ def selection() -> dict:
         hist = json.loads((config.RUNS / run / "history.json").read_text())
         best = min(hist, key=lambda h: h["val_loss"])
         runs[run] = {"role": cfg.get("role", "candidate"), "arch": cfg["arch"],
+                     "target": cfg["target"],
+                     "val_rmse_mean": float(np.mean(best["val_rmse_per_depth"])),
                      "lags": cfg["lags"], "inputs": cfg["inputs"], "epochs_run": len(hist),
                      "best_epoch": best["epoch"], "val_loss": best["val_loss"],
                      "val_rmse_per_depth": best["val_rmse_per_depth"]}
     candidates = {k: v for k, v in runs.items() if v["role"] == "candidate"}
-    headline = min(candidates, key=lambda k: candidates[k]["val_loss"]) if candidates else None
-    return {"rule": "lowest best validation loss among candidates (validation block only)",
+    headline = min(candidates, key=lambda k: candidates[k]["val_rmse_mean"]) if candidates else None
+    return {"rule": "lowest validation RMSE (°C, mean over the 15 depths, at the best epoch) "
+                    "among candidates (validation block only)",
             "headline": headline, "runs": runs, "development": development}
 
 
@@ -404,10 +408,14 @@ def report(result: dict) -> str:
         f"Rule: {result['selection']['rule']}. Headline model: "
         f"**{result['selection']['headline']}**.",
         "",
-        "| Run | Role | Encoder | Lags (days) | Inputs | Best epoch | Val loss | Val RMSE 0 / 100 / 300 / 1000 m (°C) |",
-        "|---|---|---|---|---|---:|---:|---|",
-        *[f"| {k} | {ROLE_NOTE.get(v['role'], v['role'])} | {v['arch']} | {v['lags']} | "
+        "Val loss is normalised by each target's own spread, so it is shown but not compared "
+        "across targets; the RMSE columns are in °C.",
+        "",
+        "| Run | Role | Encoder | Target | Lags (days) | Inputs | Best epoch | Val loss | Val RMSE mean (°C) | Val RMSE 0 / 100 / 300 / 1000 m (°C) |",
+        "|---|---|---|---|---|---|---:|---:|---:|---|",
+        *[f"| {k} | {ROLE_NOTE.get(v['role'], v['role'])} | {v['arch']} | {v['target']} | {v['lags']} | "
           f"{', '.join(v['inputs'])} | {v['best_epoch']}/{v['epochs_run']} | {v['val_loss']:.4f} | "
+          f"{v['val_rmse_mean']:.4f} | "
           + " / ".join(f"{v['val_rmse_per_depth'][i]:.3f}" for i in (0, 7, 11, 14)) + " |"
           for k, v in result["selection"]["runs"].items()],
         "",
@@ -451,8 +459,20 @@ def report(result: dict) -> str:
                         f"{_fmt(r['glorys'], 'bias')} |"
                         for k, r in enumerate(inc["reference_vs_argo"]) if r["n"]], ""]
         lines += _tables(inc["table"], "INCOIS")
+    sc = result.get("embedding_screen")
+    if sc:
+        lines += ["## Which embedding carries S4 (validation block only, fixed before scoring)", "",
+                  f"Rule: {sc['rule']}. Chosen: **{sc['chosen']}**.", "",
+                  "| Run | MLD probe R², embedding | MLD probe R², raw features |", "|---|---:|---:|",
+                  *[f"| {k} | {v['r2_embedding']:.3f} | {v['r2_raw']:.3f} |"
+                    for k, v in sc["runs"].items()], ""]
     for run, e in result.get("embedding", {}).items():
-        lines += [f"## Embedding inspection · {run}", ""]
+        role = [w for w, r in (("headline", result["selection"]["headline"]),
+                               ("carries S4", sc and sc["chosen"])) if r == run]
+        lines += [f"## Embedding inspection · {run}" + (f" ({', '.join(role)})" if role else ""), ""]
+        if e.get("verdict"):
+            lines += ["| S4 check (`02-requirements.md`) | Met |", "|---|---|",
+                      *[f"| {k} | {'yes' if v else 'no'} |" for k, v in e["verdict"].items()], ""]
         if "seasons" in e:
             s = e["seasons"]
             lines += ["Daily embeddings, k-means into 4 groups, against the four monsoon "
@@ -463,8 +483,13 @@ def report(result: dict) -> str:
                       f"| Nearest-neighbour day in the same season | "
                       f"{s['nearest_neighbour_same_season']:.3f} | "
                       f"{s['nearest_neighbour_chance']:.3f} (chance) |", "",
-                      "The encoder is given the day of year, so the same measures on the day "
-                      "of year alone are the bar the embedding has to clear:", "",
+                      "The encoder is given the day of year, so the day of year alone is the "
+                      "control. Clustering (NMI) is the S4 test. Nearest-neighbour is judged "
+                      "against chance only: with ±3 days excluded, a smoothly varying "
+                      "embedding's nearest neighbour is a few days away and crosses a calendar "
+                      "season boundary near each one, while the day-of-year control matches "
+                      "the same date a year apart, so it is near 1 by construction "
+                      "(`02-requirements.md` S4, amended 2026-09-28).", "",
                       "| Measure | Day of year only |", "|---|---:|",
                       f"| NMI, clusters vs season | "
                       f"{s['day_of_year_control']['nmi_clusters_vs_season']:.3f} |",
@@ -504,8 +529,11 @@ def run() -> dict:
     except Exception as e:  # the Argo block stands on its own; the failure is reported
         result["incois_error"] = f"{type(e).__name__}: {e}"
     from . import embed
-    result["embedding"] = {r: embed.inspect(r) for r in model_runs()
-                           if list((config.OUTPUT / "embedding").glob(f"{r}_*.nc"))}
+    cands = [r for r, v in sel["runs"].items() if v["role"] == "candidate"]
+    result["embedding_screen"] = embed.screen(cands)
+    inspect_runs = [r for r in dict.fromkeys([sel["headline"], result["embedding_screen"]["chosen"]])
+                    if r and list((config.OUTPUT / "embedding").glob(f"{r}_*.nc"))]
+    result["embedding"] = {r: embed.inspect(r) for r in inspect_runs}
     JSON.write_text(json.dumps(result, indent=1))
     PROFILES.write_text(json.dumps(meta))
     DOCS.write_text(report(result), encoding="utf-8")

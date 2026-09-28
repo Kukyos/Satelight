@@ -1,6 +1,6 @@
 """Reconstruct: satellite surface fields in, daily 3D temperature out.
 
-    python -m oceanembed.predict unet 2023-01-01 2024-12-15
+    python -m oceanembed.predict unet 2023-01-01 2024-12-15 [--embedding-only]
 
 writes, per day,
 
@@ -135,10 +135,14 @@ def write_embedding(run: str, emb, t: np.ndarray) -> None:
 
 
 if __name__ == "__main__":
+    # `--embedding-only`: a run that is not the headline writes its embedding artefact
+    # without overwriting the headline's daily files.
     run, a, b = sys.argv[1], date.fromisoformat(sys.argv[2]), date.fromisoformat(sys.argv[3])
     _, cfg, _ = load_model(run)
     y, t, emb = predict_span(run, a, b, with_embedding=True)
-    write_daily(run, y, t, cfg)
-    write_manifest(run, a, b, t)
+    if "--embedding-only" not in sys.argv:
+        write_daily(run, y, t, cfg)
+        write_manifest(run, a, b, t)
     write_embedding(run, emb, t)
-    print(f"wrote {len(t)} daily files and the embedding for {run}")
+    print(f"wrote the embedding for {run}" + ("" if "--embedding-only" in sys.argv
+                                             else f" and {len(t)} daily files"))

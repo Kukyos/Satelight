@@ -1,0 +1,16 @@
+# U-Net learning absolute temperature, so the per-cell embedding has to carry the mean
+# state as well as the departure from it (D-09). Recipe as the development run
+# dev-abs-reg, whose embedding beat the raw inputs on the MLD probe within the val block.
+name = "unet-abs"
+role = "candidate"
+arch = "unet"
+seed = 26066
+emb = 32
+target = "absolute"
+batch = 8
+lr = 2e-3
+epochs = 30
+crop = [64, 96]
+dropout = 0.1
+wd = 1e-2
+noise = 0.1

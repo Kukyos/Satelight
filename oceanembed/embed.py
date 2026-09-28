@@ -13,6 +13,9 @@ Called by the harness; its numbers land in docs/13-eval-results.md.
    block and scored on the test block, beside the same probe fitted on the raw eight
    satellite channels at the cell. If the embedding's R^2 is higher, it holds something
    about the upper ocean that the pixel alone does not.
+   Which run's embedding is inspected for this is chosen before any test number, on the
+   validation block alone (`screen`): the same probe fitted on its first year and scored
+   on the rest (D-09).
 3. **Pictures.** The first three principal components of the per-cell embedding, as RGB,
    for a few test days: data/figures/embedding_<run>_<day>.png.
 """
@@ -133,6 +136,59 @@ def mld_probe(run: str) -> dict:
     return out
 
 
+SCREEN_SPLIT = np.datetime64("2022-01-01")   # val block: probe fitted before, scored after
+
+
+def screen(runs: list[str]) -> dict:
+    """The MLD probe on the validation block only: fitted on 2021, scored on 2022, for each
+    run's embedding and for the raw features. Picks the run that carries S4 without the
+    test block (hard rule 6). Cached per run in runs/<run>/probe_val.json."""
+    import json
+
+    from sklearn.linear_model import Ridge
+    from sklearn.metrics import r2_score
+
+    from .predict import predict_span
+
+    out, todo = {}, []
+    for r in runs:
+        f = config.RUNS / r / "probe_val.json"
+        if f.exists():
+            out[r] = json.loads(f.read_text())
+        else:
+            todo.append(r)
+    if todo:
+        a, b = config.SPLITS["val"]
+        sea = data.sea_mask()
+        x, _, tx = data.load_raw("val", config.INPUTS, with_target=False)
+        mld, tm = data._read(MLD_SOURCE, "mld", a, b)
+        month = lambda tt: tt.astype("datetime64[M]").astype(int) % 12  # noqa: E731
+        for r in todo:
+            _, t, (cell, _) = predict_span(r, a, b, with_embedding=True)
+            common = np.intersect1d(np.intersect1d(t, tx), tm)
+            pick = lambda arr, tt: arr[np.searchsorted(tt, common)]  # noqa: E731
+            m = pick(mld, tm)
+            fit = common < SCREEN_SPLIT
+            clim = np.stack([np.nanmean(m[fit & (month(common) == k)], axis=0) for k in range(12)])
+            rows = {}
+            for part, k in (("fit", fit), ("score", ~fit)):
+                c = {"mld": clim, "month": month(common[k]), "doy": data.doy_fields(common[k])}
+                rows[part] = _sample(pick(cell, t)[k], pick(x, tx)[k], m[k], c, sea, seed=1)
+            del cell
+            (Ef, Xf, Yf, _), (Es, Xs, Ys, _) = rows["fit"], rows["score"]
+            mu, sd = Xf.mean(0), Xf.std(0) + 1e-6
+            res = {"fit": "val block before 2022", "scored": "val block 2022"}
+            for name, (fa, fb) in {"embedding": (Ef, Es),
+                                   "raw": ((Xf - mu) / sd, (Xs - mu) / sd)}.items():
+                res[f"r2_{name}"] = float(r2_score(Ys, Ridge(alpha=1.0).fit(fa, Yf).predict(fb)))
+            (config.RUNS / r / "probe_val.json").write_text(json.dumps(res, indent=1))
+            out[r] = res
+    best = max(out, key=lambda r: out[r]["r2_embedding"] - out[r]["r2_raw"]) if out else None
+    return {"rule": "candidate whose embedding beats the raw features on the val-block "
+                    "MLD probe by the widest margin (fit 2021, scored 2022)",
+            "chosen": best, "runs": out}
+
+
 def pictures(run: str, days: list[str]) -> list[str]:
     import matplotlib
     matplotlib.use("Agg")
@@ -188,7 +244,22 @@ def inspect(run: str) -> dict:
         out["mld_probe"] = mld_probe(run)
     except FileNotFoundError as e:
         out["mld_probe_error"] = f"MLD not fetched: {e}"
+    out["verdict"] = verdict(out)
     return out
+
+
+def verdict(out: dict) -> dict:
+    """The two S4 proofs as amended 2026-09-28 (docs/02-requirements.md)."""
+    v = {}
+    if "seasons" in out:
+        s = out["seasons"]
+        v["clusters by season better than the day of year alone (NMI)"] = (
+            s["nmi_clusters_vs_season"] > s["day_of_year_control"]["nmi_clusters_vs_season"])
+    if "mld_probe" in out:
+        m = [x for x in out["mld_probe"].values() if isinstance(x, dict)]
+        v["MLD probe on the embedding beats the raw features (R² on test)"] = (
+            m[0]["r2_test"] > m[1]["r2_test"])
+    return v
 
 
 def demo() -> None:
@@ -201,6 +272,10 @@ def demo() -> None:
     daily = rng.normal(size=(tt.size, 8)) + 4 * np.eye(4, 8)[s]
     r = season_scores(daily, tt)
     assert r["nmi_clusters_vs_season"] > 0.8 > r["nmi_shuffled_seasons"], r
+    v = verdict({"seasons": r, "mld_probe": {"label": "x", "emb": {"r2_test": 0.2},
+                                             "raw": {"r2_test": 0.3}}})
+    assert list(v.values()) == [r["nmi_clusters_vs_season"] > r["day_of_year_control"]
+                                ["nmi_clusters_vs_season"], False], v
     print("embed ok: seasons recovered from a planted signal, shuffled control near zero")
 
 
