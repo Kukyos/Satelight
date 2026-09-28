@@ -62,8 +62,10 @@ Domain: **240 lon × 100 lat = 24,000 cells** per day, before the land mask.
 
 > **Constraint:** the common grid is the DUACS lattice. Coarser-from-finer is always a
 > **block mean**, never interpolation, so no value is invented. Any source that does not
-> align exactly (OSCAR and CCMP are unchecked) is regridded with its method recorded in
-> the provenance. Nothing is regridded finer than it is.
+> align exactly is regridded with its method recorded in
+> the provenance. Nothing is regridded finer than it is. Checked 2026-09-28 on real data
+> for every input (`tests/test_sources.py --live`): CCMP sits on the lattice and passes
+> through; OSCAR is the half-cell shift described above.
 
 ## L5 · Depth — fifteen target levels, and the two ends are awkward
 

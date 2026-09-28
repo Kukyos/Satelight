@@ -8,7 +8,7 @@ they come only from the harness, in `13-eval-results.md`.
 
 | Piece | Where | Proof |
 |---|---|---|
-| Ingest of all eight inputs and the target, 2010-02-04 → 2024-12-15, on the 240 × 100 grid | `oceanembed/fetch.py`, `grid.py`, `data/cube/` | `tests/test_cube.py` (grid, daily axis, 15 depths, shelf mask, provenance on every file); `tests/test_reproduce.py --live` (a re-fetch is bit-identical) |
+| Ingest of all eight inputs and the target, 2010-02-04 → 2024-12-15, on the 240 × 100 grid | `oceanembed/fetch.py`, `grid.py`, `data/cube/` | `tests/test_cube.py` (grid, daily axis, 15 depths, shelf mask, provenance on every file); `tests/test_reproduce.py --live` (a re-fetch is bit-identical); `tests/test_sources.py --live` (each input equals its source, regridded by hand, on a real day). S1–S3 and E1 are `done` |
 | Extended window 1993 → 2009, every source (D-07) | `data/cube/`, `python -m oceanembed.fetch <source> extended` | Same tests |
 | Mixed-layer depth 2021–2024, the probe label (never an input) | `data/cube/mld/` | — |
 | Argo casts for the test block | `data/cache/argo_erddap/` | QC kept, rejected levels counted |
