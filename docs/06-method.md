@@ -77,8 +77,9 @@ With the `lags` option, each satellite field is also stacked as it was some days
 
 The architecture:
 
-- **Encoder.** Maps the whole basin to a **32-number embedding per cell**, plus a
-  **64-number embedding per day** pooled from the deepest layer.
+- **Encoder.** Maps the whole basin to a **32-number embedding per cell**. The **daily
+  embedding** is the deepest layer averaged over the basin (256 numbers for the U-Net,
+  192 for the hybrid), with no extra layer on top.
 - **Decoder.** A per-cell MLP from the 32 numbers to the 15 depths. Everything spatial
   the model uses therefore has to pass through the embedding.
 
@@ -94,7 +95,11 @@ Training:
 - **Loss:** masked mean squared error on per-level z-scored temperature.
 - **Optimiser:** AdamW with a one-cycle learning rate.
 - **Precision:** bf16 autocast.
-- **Selection:** the checkpoint with the lowest validation loss.
+- **Selection:** within a run, the checkpoint with the lowest validation loss. Across
+  runs, the harness names the headline model from validation loss alone, before it
+  computes any test number; ablations and the extended-window comparison are labelled.
+- **Reproducibility:** a config and a seed reproduce a run bit for bit. The hybrid uses
+  the exact (math) attention kernel because the fused kernels are not deterministic.
 
 Each run is fully described by `configs/<name>.toml` and its seed. The run directory
 keeps the config, the normalisation statistics and the loss curves.
@@ -148,11 +153,13 @@ is compared at its own 1° / 10-day grid:
 - **Seasons.** The per-day embeddings are clustered with k-means into four groups, and
   the groups are compared with the four monsoon seasons (NMI), beside a shuffled control.
   A second check asks whether each day's nearest neighbour in embedding space falls in
-  the same season, beside chance.
+  the same season, beside chance. Both are also run on the day of year alone, which the
+  encoder is given: the embedding has to beat that.
 - **Mixed-layer depth.** A linear probe maps the per-cell embedding to GLORYS
   mixed-layer depth, which is never an input and never a target. It is fitted on the
-  validation block and scored on the test block, beside the same probe on the raw
-  satellite channels.
+  validation block and scored on the test block, beside the same probe on the 13 raw
+  features the encoder saw at that cell. R² is reported on the depth and on its anomaly
+  from a monthly climatology, so neither probe wins on the season alone.
 - **Maps.** The first three principal components of the per-cell embedding are drawn as
   colour, one map per day.
 

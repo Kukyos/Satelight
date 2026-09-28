@@ -69,28 +69,37 @@ def _features(x: np.ndarray, t: np.ndarray, stats: data.Stats) -> np.ndarray:
 
 
 def fit_linear() -> None:
-    x, y, t = data.load_raw("train", config.INPUTS)
-    stats = data.compute_stats(x, y)
-    f = torch.from_numpy(_features(x, t, stats)).cuda()             # (T, P, F)
-    yt = torch.from_numpy(y.reshape(len(y), 15, -1).transpose(0, 2, 1).copy()).cuda()  # (T, P, 15)
-    ok = torch.isfinite(yt)
-    yt = torch.nan_to_num(yt)
-    nf = f.shape[-1]
-    coef = torch.zeros(f.shape[1], nf, 15, device="cuda")
-    # A level missing at a cell is missing on every day (a static mask), so one solve
-    # per cell covers every level that exists there.
-    for i in range(0, f.shape[1], 2000):
-        fi = f[:, i:i + 2000].transpose(0, 1)                          # (p, T, F)
-        yi = yt[:, i:i + 2000].transpose(0, 1)
-        xtx = fi.transpose(1, 2) @ fi + RIDGE * len(t) * torch.eye(nf, device="cuda")
-        coef[i:i + 2000] = torch.linalg.solve(xtx, fi.transpose(1, 2) @ yi)
-    level_ok = ok.all(dim=0)                                           # (P, 15)
+    """Normal equations per cell, accumulated a year at a time on the CPU and solved on
+    the GPU a slice of cells at a time: the whole train block never has to fit in 8 GB."""
+    a, b = config.SPLITS["train"]
+    pieces = [(max(a, date(y, 1, 1)), min(b, date(y, 12, 31))) for y in range(a.year, b.year + 1)]
+    x0, y0, _ = data.load_raw("train", config.INPUTS, span=pieces[0])
+    stats = data.compute_stats(x0, y0)  # the first train year: centring only, not a score
+    del x0, y0
+    xtx = xty = None
+    level_ok = None
+    n = 0
+    for p in pieces:
+        x, y, t = data.load_raw("train", config.INPUTS, span=p)
+        f = torch.from_numpy(_features(x, t, stats)).cuda()                  # (T, P, F)
+        yt = torch.from_numpy(y.reshape(len(y), 15, -1)).cuda().transpose(1, 2)  # (T, P, 15)
+        ok = torch.isfinite(yt).all(dim=0)
+        level_ok = ok if level_ok is None else level_ok & ok
+        yt = torch.nan_to_num(yt)
+        part_xtx = torch.einsum("tpf,tpg->pfg", f, f).cpu()
+        part_xty = torch.einsum("tpf,tpl->pfl", f, yt).cpu()
+        xtx = part_xtx if xtx is None else xtx + part_xtx
+        xty = part_xty if xty is None else xty + part_xty
+        n += len(t)
+        del x, y, f, yt
+    nf = xtx.shape[-1]
+    coef = torch.linalg.solve(xtx + RIDGE * n * torch.eye(nf), xty)
     out = config.RUNS / "linear"
     out.mkdir(parents=True, exist_ok=True)
-    np.save(out / "coef.npy", coef.cpu().numpy())
+    np.save(out / "coef.npy", coef.numpy())
     np.save(out / "level_ok.npy", level_ok.cpu().numpy())
     stats.save(out / "stats.json")
-    print("linear: fitted on", len(t), "train days")
+    print("linear: fitted on", n, "train days")
 
 
 def linear(x: np.ndarray, t: np.ndarray) -> np.ndarray:
@@ -98,8 +107,9 @@ def linear(x: np.ndarray, t: np.ndarray) -> np.ndarray:
     coef = torch.from_numpy(np.load(out / "coef.npy")).cuda()
     level_ok = np.load(out / "level_ok.npy")
     stats = data.Stats.load(out / "stats.json")
-    f = torch.from_numpy(_features(x, t, stats)).cuda()
-    p = torch.einsum("tpf,pfl->tpl", f, coef).cpu().numpy()
+    p = np.concatenate([torch.einsum("tpf,pfl->tpl",
+                                     torch.from_numpy(_features(x[i:i + 64], t[i:i + 64], stats)).cuda(),
+                                     coef).cpu().numpy() for i in range(0, len(t), 64)])
     p[:, ~level_ok] = np.nan
     return p.transpose(0, 2, 1).reshape(len(t), 15, config.NLAT, config.NLON)
 

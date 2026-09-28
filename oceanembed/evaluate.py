@@ -82,6 +82,46 @@ def model_runs() -> list[str]:
     return sorted(p.parent.name for p in config.RUNS.glob("*/best.pt"))
 
 
+ROLE_NOTE = {
+    "candidate": "a candidate for the model",
+    "ablation": "ablation: an input removed, to measure what it adds",
+    "comparison": "extended-window comparison: trained from 1993, where salinity before "
+                  "~2010 is not satellite salinity; never shown as the model",
+}
+
+
+def selection() -> dict:
+    """The headline model, chosen on the validation block only (hard rule 6), before any
+    test number is computed: the candidate with the lowest best validation loss. All
+    candidates share the train block, so their normalised losses are comparable."""
+    from .train import load_config
+
+    runs = {}
+    for run in model_runs():
+        cfg = load_config(config.RUNS / run / "config.toml")
+        hist = json.loads((config.RUNS / run / "history.json").read_text())
+        best = min(hist, key=lambda h: h["val_loss"])
+        runs[run] = {"role": cfg.get("role", "candidate"), "arch": cfg["arch"],
+                     "lags": cfg["lags"], "inputs": cfg["inputs"], "epochs_run": len(hist),
+                     "best_epoch": best["epoch"], "val_loss": best["val_loss"],
+                     "val_rmse_per_depth": best["val_rmse_per_depth"]}
+    candidates = {k: v for k, v in runs.items() if v["role"] == "candidate"}
+    headline = min(candidates, key=lambda k: candidates[k]["val_loss"]) if candidates else None
+    return {"rule": "lowest best validation loss among candidates (validation block only)",
+            "headline": headline, "runs": runs}
+
+
+def label(name: str, sel: dict) -> str:
+    """How a contender is named in the tables: the headline says so; ablations and the
+    extended-window comparison say what they are."""
+    r = sel["runs"].get(name)
+    if r is None:
+        return name
+    if name == sel["headline"]:
+        return f"{name} (selected)"
+    return f"{name} ({r['role']})" if r["role"] != "candidate" else name
+
+
 def contenders() -> tuple[dict, np.ndarray]:
     """Every predictor on the test block: name -> (T, 15, H, W), on one shared day axis."""
     from .predict import level_mask, predict_span
@@ -310,6 +350,18 @@ def report(result: dict) -> str:
         "- Every contender is scored on the same (cast, depth) points: a point counts only "
         "where the cast and every contender have a value.",
         "",
+        "## Model selection (validation block only, fixed before scoring)",
+        "",
+        f"Rule: {result['selection']['rule']}. Headline model: "
+        f"**{result['selection']['headline']}**.",
+        "",
+        "| Run | Role | Encoder | Lags (days) | Inputs | Best epoch | Val loss | Val RMSE 0 / 100 / 300 / 1000 m (°C) |",
+        "|---|---|---|---|---|---:|---:|---|",
+        *[f"| {k} | {ROLE_NOTE.get(v['role'], v['role'])} | {v['arch']} | {v['lags']} | "
+          f"{', '.join(v['inputs'])} | {v['best_epoch']}/{v['epochs_run']} | {v['val_loss']:.4f} | "
+          + " / ".join(f"{v['val_rmse_per_depth'][i]:.3f}" for i in (0, 7, 11, 14)) + " |"
+          for k, v in result["selection"]["runs"].items()],
+        "",
         "## Argo casts (test block)",
         "",
         "| Count | Value |", "|---|---:|",
@@ -332,15 +384,23 @@ def report(result: dict) -> str:
                       f"{s['nmi_shuffled_seasons']:.3f} (shuffled seasons) |",
                       f"| Nearest-neighbour day in the same season | "
                       f"{s['nearest_neighbour_same_season']:.3f} | "
-                      f"{s['nearest_neighbour_chance']:.3f} (chance) |", ""]
+                      f"{s['nearest_neighbour_chance']:.3f} (chance) |", "",
+                      "The encoder is given the day of year, so the same measures on the day "
+                      "of year alone are the bar the embedding has to clear:", "",
+                      "| Measure | Day of year only |", "|---|---:|",
+                      f"| NMI, clusters vs season | "
+                      f"{s['day_of_year_control']['nmi_clusters_vs_season']:.3f} |",
+                      f"| Nearest-neighbour day in the same season | "
+                      f"{s['day_of_year_control']['nearest_neighbour_same_season']:.3f} |", ""]
         if "mld_probe" in e:
             m = e["mld_probe"]
             lines += [f"Linear probe for mixed-layer depth ({m['label']}), fitted on the "
                       f"{m['fit_on']} ({m['rows_fit']} cell-days), scored on the "
                       f"{m['scored_on']} ({m['rows_scored']} cell-days):", "",
-                      "| Probe input | R² on test |", "|---|---:|",
-                      *[f"| {k} | {v['r2_test']:.3f} |" for k, v in m.items()
-                        if isinstance(v, dict)], ""]
+                      "| Probe input | R² on test | R² on test anomalies (vs monthly climatology) |",
+                      "|---|---:|---:|",
+                      *[f"| {k} | {v['r2_test']:.3f} | {v['r2_test_anomaly']:.3f} |"
+                        for k, v in m.items() if isinstance(v, dict)], ""]
         if "mld_probe_error" in e:
             lines += [f"MLD probe not run: {e['mld_probe_error']}", ""]
         if e.get("figures"):
@@ -352,10 +412,13 @@ def report(result: dict) -> str:
 
 def run() -> dict:
     t0 = time.time()
+    sel = selection()   # fixed from the validation block before anything is scored
     sea = data.sea_mask()
     aligned, t = contenders()
+    aligned = {label(k, sel): v for k, v in aligned.items()}
     table, counts, meta = argo_block(aligned, t, sea)
     result = {"generated": datetime.now().isoformat(timespec="seconds"),
+              "selection": sel,
               "test_days": int(t.size), "contenders": list(aligned),
               "depths": config.DEPTHS.tolist(), "argo_counts": counts, "argo": table}
     try:

@@ -46,7 +46,8 @@ const COLORS: Record<string, string> = {
   "unet-no-currents-winds": "#A99BE0", linear: "#8CA0B3", climatology: "#5F7488",
   "GLORYS (ceiling)": "#E8876A", glorys: "#E8876A", argo: "#F5C542",
 };
-const color = (name: string) => COLORS[name] ?? "#B8C7D6";
+// Tables name runs "unet (selected)", "unet-extended (comparison)": colour by the run.
+const color = (name: string) => COLORS[name.replace(/ \(.*\)$/, "")] ?? COLORS[name] ?? "#B8C7D6";
 const TEMP_RANGE: [number, number] = [2, 31];
 const ERROR_RANGE: [number, number] = [-2, 2];
 const ARGO = Color.fromCssColorString("#F5C542");
@@ -288,7 +289,7 @@ async function drawProfile(): Promise<void> {
       ...Object.entries(c.pred).map(([k, v]) => ({
         name: k === "GLORYS (ceiling)" ? "GLORYS" : k, color: color(k), values: v,
         dash: k === "climatology" ? "2 4" : k === "linear" ? "6 4" : undefined,
-        width: k === meta.run ? 2.4 : 1.4,
+        width: k.startsWith(`${meta.run} `) || k === meta.run ? 2.4 : 1.4,
       })),
       { name: "Argo, measured", color: color("argo"), values: c.obs, dots: true, width: 1 },
     ];
@@ -321,7 +322,7 @@ function drawSkill(): void {
     name: name === "GLORYS (ceiling)" ? "GLORYS (ceiling)" : name,
     color: color(name), values: per.map((s) => s.rmse),
     dash: name === "climatology" ? "2 4" : name === "linear" ? "6 4" : undefined,
-    width: name === meta.run ? 2.4 : 1.4,
+    width: name.startsWith(`${meta.run} `) || name === meta.run ? 2.4 : 1.4,
   }));
   const n = table[Object.keys(table)[0]].reduce((a, s) => a + (s.n ?? 0), 0);
   $("skill-lede").textContent = `RMSE against held-out Argo floats, ${state.region}, test block ` +

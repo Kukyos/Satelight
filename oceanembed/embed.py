@@ -36,6 +36,15 @@ def season(t: np.ndarray) -> np.ndarray:
 
 
 def season_scores(daily: np.ndarray, t: np.ndarray, seed: int = 0) -> dict:
+    """The embedding's scores, beside the same scores for the day of year alone. The
+    encoder is given sin/cos of the day of year as an input, so the embedding only shows
+    something about the ocean if it beats that control."""
+    out = _season_scores(daily, t, seed)
+    out["day_of_year_control"] = _season_scores(data.doy_fields(t), t, seed)
+    return out
+
+
+def _season_scores(daily: np.ndarray, t: np.ndarray, seed: int) -> dict:
     from sklearn.cluster import KMeans
     from sklearn.metrics import normalized_mutual_info_score
 
@@ -57,31 +66,46 @@ def season_scores(daily: np.ndarray, t: np.ndarray, seed: int = 0) -> dict:
             "nearest_neighbour_chance": chance}
 
 
-def _sample(cell: np.ndarray, x: np.ndarray, mld: np.ndarray, sea: np.ndarray, seed: int):
-    """Rows of (embedding, raw channels, MLD) from random sea cells on every day."""
+def _sample(cell, x, mld, clim, sea, seed):
+    """Rows of (embedding, raw features, MLD, MLD climatology) from random sea cells on
+    every day. The raw features are what the encoder itself was given at that cell: the
+    eight satellite channels, latitude, longitude, sea-floor depth and day of year."""
     rng = np.random.default_rng(seed)
     js, is_ = np.nonzero(sea)
-    E, X, Y = [], [], []
+    st = data.static_fields()
+    E, X, Y, C = [], [], [], []
     for d in range(cell.shape[0]):
         k = rng.choice(js.size, SAMPLE_CELLS, replace=False)
         j, i = js[k], is_[k]
         y = mld[d, j, i]
-        xr_ = x[d][:, j, i].T
-        ok = np.isfinite(y) & np.isfinite(xr_).all(1)
+        raw = np.column_stack([x[d][:, j, i].T, st["lat"][j, i], st["lon"][j, i],
+                               st["bathy"][j, i],
+                               np.broadcast_to(clim["doy"][d], (j.size, 2))])
+        ok = np.isfinite(y) & np.isfinite(raw).all(1)
         E.append(cell[d][:, j, i].T[ok])
-        X.append(xr_[ok])
+        X.append(raw[ok])
         Y.append(y[ok])
-    return np.concatenate(E).astype(np.float32), np.concatenate(X), np.concatenate(Y)
+        C.append(clim["mld"][clim["month"][d], j, i][ok])
+    return (np.concatenate(E).astype(np.float32), np.concatenate(X), np.concatenate(Y),
+            np.concatenate(C))
 
 
 def mld_probe(run: str) -> dict:
-    """Linear probe for mixed-layer depth: fit on val, score on test."""
+    """Linear probe for mixed-layer depth: fit on val, score on test.
+
+    Scored twice: R^2 on MLD itself, and R^2 on MLD anomalies from a per-cell monthly
+    climatology (fitted on the val block), so that neither probe can win on the season
+    alone."""
     from sklearn.linear_model import Ridge
     from sklearn.metrics import r2_score
 
     from .predict import predict_span
 
     sea = data.sea_mask()
+    va, vb = config.SPLITS["val"]
+    mld_val, t_val = data._read(MLD_SOURCE, "mld", va, vb)
+    month = lambda tt: tt.astype("datetime64[M]").astype(int) % 12  # noqa: E731
+    clim_mld = np.stack([np.nanmean(mld_val[month(t_val) == m], axis=0) for m in range(12)])
     rows = {}
     for split in ("val", "test"):
         a, b = config.SPLITS[split]
@@ -90,18 +114,22 @@ def mld_probe(run: str) -> dict:
         mld, tm = data._read(MLD_SOURCE, "mld", a, b)
         common = np.intersect1d(np.intersect1d(t, tx), tm)
         pick = lambda arr, tt: arr[np.searchsorted(tt, common)]  # noqa: E731
-        rows[split] = _sample(pick(cell, t), pick(x, tx), pick(mld, tm), sea, seed=1)
+        clim = {"mld": clim_mld, "month": month(common), "doy": data.doy_fields(common)}
+        rows[split] = _sample(pick(cell, t), pick(x, tx), pick(mld, tm), clim, sea, seed=1)
         del cell, x, mld
-    (Ev, Xv, Yv), (Et, Xt, Yt) = rows["val"], rows["test"]
+    (Ev, Xv, Yv, Cv), (Et, Xt, Yt, Ct) = rows["val"], rows["test"]
     mu, sd = Xv.mean(0), Xv.std(0) + 1e-6
     out = {"fit_on": "val block", "scored_on": "test block",
            "rows_fit": int(Yv.size), "rows_scored": int(Yt.size),
            "label": "GLORYS mlotst (mixed-layer depth, m): never an input, never a target"}
     for name, (fv, ft) in {"embedding (32 per cell)": (Ev, Et),
-                           "raw satellite channels (8 per cell)": ((Xv - mu) / sd, (Xt - mu) / sd)
+                           "raw features the encoder saw (13 per cell)": ((Xv - mu) / sd,
+                                                                          (Xt - mu) / sd)
                            }.items():
         m = Ridge(alpha=1.0).fit(fv, Yv)
-        out[name] = {"r2_test": float(r2_score(Yt, m.predict(ft)))}
+        p = m.predict(ft)
+        out[name] = {"r2_test": float(r2_score(Yt, p)),
+                     "r2_test_anomaly": float(r2_score(Yt - Ct, p - Ct))}
     return out
 
 

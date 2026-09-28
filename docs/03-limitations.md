@@ -129,6 +129,13 @@ would improve a model a lot. But neither is a satellite observation.
 > lon, bathymetry, day-of-year). Nothing from GLORYS goes in as an input. If an
 > experiment breaks this, it is labelled as an ablation, never shown as the model.
 
+> **Decision, 2026-09-28:** the bathymetry channel and the sea mask are taken from the
+> GLORYS static file (`deptho`, regridded with the same stencil). They are fixed
+> properties of the sea floor, identical on every day, and carry nothing about the
+> ocean's state; using the target's own sea floor also keeps the input mask and the
+> output mask identical. An independent bathymetry (GEBCO, ETOPO) would serve equally
+> and is the substitute if this is challenged. Nothing time-varying from GLORYS goes in.
+
 ## L10 · The embedding has to be a thing, not a claim
 
 The problem statement's title is *embedding-based*. A network with a hidden layer

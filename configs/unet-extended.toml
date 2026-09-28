@@ -2,10 +2,10 @@
 # from 1993. Salinity before ~2010 is not satellite salinity (SMOS launched 2009), so this
 # run is a labelled comparison, not the model. Validation and test blocks are unchanged.
 name = "unet-extended"
+role = "comparison"
 arch = "unet"
 seed = 26066
 emb = 32
-daily = 64
 width = 32
 epochs = 25
 batch = 8

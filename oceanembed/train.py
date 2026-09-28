@@ -84,7 +84,7 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
 
 def build(cfg: dict) -> OceanEmbed:
     return OceanEmbed(data.n_channels(cfg["inputs"], cfg["lags"]), cfg["arch"], cfg.get("emb", 32),
-                      cfg.get("daily", 64), width=cfg.get("width", 32))
+                      width=cfg.get("width", 32))
 
 
 def batches(n: int, size: int, rng: np.random.Generator | None):
