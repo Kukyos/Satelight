@@ -32,7 +32,7 @@ Status: `—` not started · `wip` · `done` (check passes) · `blocked` (see `1
 | E3 | DL reconstruction model for subsurface temperature | S5, S6 | done |
 | E4 | Standardized output, daily, 0.25° | S2, S6 — the reconstruction is written on the common grid as a daily NetCDF | done |
 | E5 | Validation framework using independent ARGO observations | S7, with the independence limits in `03-limitations.md` L1 | done |
-| E6 | Working PoC over the Bay of Bengal / Arabian Sea | Trained over the full North Indian Ocean box; demonstrated in a viewer over both basins, with the Argo casts in the same scene | wip |
+| E6 | Working PoC over the Bay of Bengal / Arabian Sea | Trained over the full North Indian Ocean box; demonstrated in a viewer over both basins, with the Argo casts in the same scene | done — reviewed 2026-09-28 on the headline (hybrid) output: both basins render from `data/output/daily`, the Argo casts and skill panel come from the harness output, each cast shows its data mode, rejected-level count and source file, and a day with no reconstruction (2024-08-31) is announced, not filled. Screenshots: `data/figures/viewer_*.jpg`. Redone if D-09 changes the headline |
 
 ## What "independent" has to mean here
 

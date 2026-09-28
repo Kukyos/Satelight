@@ -18,7 +18,7 @@ they come only from the harness, in `13-eval-results.md`.
 | Output writer (daily NetCDF), manifest of skipped days, embedding artefact | `oceanembed/predict.py`, `data/output/` | `tests/test_output.py` |
 | Harness: Argo and INCOIS gridded Argo, per depth and basin, beside climatology and GLORYS; INCOIS range test and its own agreement with Argo; validation-only model selection; embedding inspection with controls | `oceanembed/evaluate.py`, `embed.py` | `evaluate.demo()`, `embed.demo()`; the first full report is `13-eval-results.md` (2026-09-28) |
 | All five runs trained; headline named on validation loss alone: **hybrid** | `runs/` | Harness, "Model selection" |
-| PoC viewer and API | `viewer/`, `oceanembed/api.py`, `start.bat` / `start.sh` | Checked end to end on a throwaway model (since deleted); not yet reviewed on the real model |
+| PoC viewer and API (E6) | `viewer/`, `oceanembed/api.py`, `start.bat` / `start.sh` | Reviewed on the hybrid output over both basins, 2026-09-28; `data/figures/viewer_*.jpg` |
 
 What the development runs showed, in words (their figures are in the harness report):
 
@@ -72,15 +72,13 @@ with stdout and stderr to `data/logs/`). Keep the machine plugged in and awake.
 1. **S4 / E2: a different encoder** (D-09), decided 2026-09-28. If it becomes the
    headline, the output, the harness report, the viewer review and the deck are redone,
    so the deck waits for it.
-2. **E6: review the viewer on the real model** over both basins. The error view and the
-   Argo casts come from the harness output.
-3. **Open ledger items.**
+2. **Open ledger items.**
    - D-03: INCOIS LAS endpoint, left deferred (2026-09-28).
    - D-06: measure the salinity reprocessed/real-time join before extending the output
      past 2024-12-15.
-4. **Move the project to `G:\Projects\SIH26P4`** once nothing is running. Keep
+3. **Move the project to `G:\Projects\SIH26P4`** once nothing is running. Keep
    `data/cache`. Rebuild `.venv` at the new path; the torch wheel is in `.wheels/`.
-5. **Then the deck and the film.** Every figure in them traces to `13-eval-results.md`.
+4. **Then the deck and the film.** Every figure in them traces to `13-eval-results.md`.
 
 ## Disk
 

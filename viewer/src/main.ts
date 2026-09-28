@@ -294,7 +294,8 @@ async function drawProfile(): Promise<void> {
       { name: "Argo, measured", color: color("argo"), values: c.obs, dots: true, width: 1 },
     ];
     $("profile-prov").textContent = `Data mode ${c.data_mode}; ${c.levels_rejected} levels failed QC ` +
-      `and were left out. Source: ${c.source_file}. This float was never used in training.`;
+      `and were left out. Source: ${c.source_file}. This profile is from the held-out test ` +
+      `block: the model never saw it, but GLORYS assimilates Argo (see 03-limitations L1).`;
   } else {
     const col = await api.column(state.day, selected.lat, selected.lon);
     $("where").textContent = `${col.lat.toFixed(3)}°N ${col.lon.toFixed(3)}°E on ${col.day}` +
@@ -452,6 +453,12 @@ async function start(): Promise<void> {
   setDay(state.day);
   drawSkill();
   await Promise.all([drawCube(true), drawInputs(), drawEmbedding(), loadCasts()]);
+  // A linked day with no reconstruction (an input was missing that day, see
+  // data/output/daily/manifest.json) is said so, not silently swapped for another day.
+  if (h.day && h.day !== state.day) {
+    notice(`No reconstruction was written for ${h.day}: an input had no data that day. ` +
+      `Showing ${state.day} instead.`);
+  }
   // Open on the first float in view, so the right dock is never empty on a demo.
   const first = casts.find((c) => {
     const b = meta.regions[state.region];
