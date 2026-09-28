@@ -98,6 +98,13 @@ Individual Argo profiles are points at irregular depths. INCOIS gridded Argo is 
 > output down, never upsampling the reference. Every Argo value keeps its QC flag and
 > data mode, and profiles failing QC are counted as rejected, not silently dropped.
 
+> **Measured 2026-09-28** (`13-eval-results.md`, "How well the reference itself agrees
+> with Argo"). The ERDDAP gridded product agrees with the test-block Argo casts much less
+> well than GLORYS does at the same 1° / 10-day resolution, at every depth, and it holds
+> values outside the Argo global range (rejected and counted by the harness). A score
+> against INCOIS gridded Argo therefore measures INCOIS as much as the model; the point
+> profiles are the validation, and INCOIS is reported beside them with that caveat.
+
 ## L7 · The files are not as clean as they claim
 
 Measured in PS 26067: INCOIS labels temperature units as `"degs"` and gives no `positive`

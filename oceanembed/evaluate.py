@@ -243,8 +243,13 @@ def argo_block(aligned: dict, t: np.ndarray, sea: np.ndarray):
 # ------------------------------------------------------------------ INCOIS gridded Argo
 
 
-def incois_block(aligned: dict, t: np.ndarray) -> dict:
-    """Compare everyone with INCOIS's gridded Argo at its own 1 deg / 10-day grid."""
+def incois_block(aligned: dict, t: np.ndarray, casts: list[dict] | None = None) -> dict:
+    """Compare everyone with INCOIS's gridded Argo at its own 1 deg / 10-day grid.
+
+    INCOIS values outside the Argo global range are rejected and counted (hard rule 2).
+    With the test-block casts given, INCOIS itself is also scored against them, beside
+    GLORYS brought to the same 1 deg / 10-day grid, so the reader can see how well the
+    reference agrees with the Argo it is built from."""
     import gsw
     import requests
     import truststore
@@ -280,17 +285,35 @@ def incois_block(aligned: dict, t: np.ndarray) -> dict:
     ]
     lat = ds["latitude"].values
     lon = ds["longitude"].values
+    temp_all, sal_all = ds["TEMP"].values, ds["SAL"].values
+    bad = np.isfinite(temp_all) & ((temp_all < -2.5) | (temp_all > 40.0) |
+                                   ~((sal_all >= 2.0) & (sal_all <= 41.0)))
+    qc = {"values": int(np.isfinite(temp_all).sum()), "rejected_by_range": int(bad.sum())}
+    notes.append(f"range test (Argo global range: T -2.5..40 degC, S 2..41): "
+                 f"{qc['rejected_by_range']} of {qc['values']} INCOIS values rejected")
+    temp_all = np.where(bad, np.nan, temp_all)
     st = grid.Stencil((1.0,) * 4, 4, "4 x 4 block mean to 1 deg")
+    steps = ds["time"].values.astype("datetime64[D]")
+    by_step = {}   # INCOIS step -> casts inside its window, on INCOIS's 1 deg cells
+    for c in casts or []:
+        day = np.datetime64(c["day"])
+        s = np.flatnonzero((day >= steps - 5) & (day < steps + 5))
+        j = int(np.floor(c["lat"] - config.LAT_EDGES[0]))
+        i = int(np.floor(c["lon"] - config.LON_EDGES[0]))
+        if s.size and 0 <= j < lat.size and 0 <= i < lon.size:
+            obs = np.array([np.nan if x is None else x for x in c["obs"]])
+            by_step.setdefault(int(s[0]), []).append((j, i, obs))
+    ref = {k: ([], [], []) for k in range(config.DEPTHS.size)}   # obs, INCOIS, GLORYS
     table = {}
     obs_all, pred_all, where_all = [], {k: [] for k in aligned}, []
-    for s, ts in enumerate(ds["time"].values.astype("datetime64[D]")):
+    for s, ts in enumerate(steps):
         win = (t >= ts - 5) & (t < ts + 5)
         if win.sum() < 8:
             continue
         for z in shared:
             k = int(np.flatnonzero(np.isclose(config.DEPTHS, z))[0])
-            temp = ds["TEMP"].isel(time=s).sel(ZAX=z).values
-            sal = ds["SAL"].isel(time=s).sel(ZAX=z).values
+            zi = int(np.flatnonzero(np.isclose(ds["ZAX"].values, z))[0])
+            temp, sal = temp_all[s, zi], sal_all[s, zi]
             p = gsw.p_from_z(-z, lat[:, None])
             sa = gsw.SA_from_SP(sal, p, lon[None, :], lat[:, None])
             pt = gsw.pt0_from_t(sa, temp, p)
@@ -299,6 +322,10 @@ def incois_block(aligned: dict, t: np.ndarray) -> dict:
                 m, share = grid.regrid(np.nanmean(v[win, k], axis=0), st, lat.size, lon.size)
                 m[share < config.OCEAN_FRACTION_MIN] = np.nan
                 coarse[name] = m
+            for j, i, obs in by_step.get(s, []):
+                g = coarse.get("GLORYS (ceiling)")
+                if g is not None and np.isfinite([obs[k], pt[j, i], g[j, i]]).all():
+                    ref[k][0].append(obs[k]); ref[k][1].append(pt[j, i]); ref[k][2].append(g[j, i])
             ok = np.isfinite(pt)
             for m in coarse.values():
                 ok &= np.isfinite(m)
@@ -320,7 +347,11 @@ def incois_block(aligned: dict, t: np.ndarray) -> dict:
                 clim = preds["climatology"][sel] if name != "climatology" else None
                 per.append(scores(v[sel], obs[sel], clim) if sel.any() else {"n": 0})
             table[region][name] = per
-    return {"table": table, "notes": notes, "shared_depths": shared, "file": path.name}
+    reference = [{"n": len(o), "incois": scores(np.array(a), np.array(o), None),
+                  "glorys": scores(np.array(g), np.array(o), None)} if o else {"n": 0}
+                 for o, a, g in ref.values()]
+    return {"table": table, "notes": notes, "shared_depths": shared, "file": path.name,
+            "qc": qc, "reference_vs_argo": reference}
 
 
 # ------------------------------------------------------------------ report
@@ -403,7 +434,23 @@ def report(result: dict) -> str:
     if "incois" in result:
         inc = result["incois"]
         lines += ["## INCOIS gridded Argo (`incois_argo_10d_VAM`, 1° / 10-day)", "",
-                  *[f"- {n}" for n in inc["notes"]], "", *_tables(inc["table"], "INCOIS")]
+                  *[f"- {n}" for n in inc["notes"]], ""]
+        if inc.get("reference_vs_argo"):
+            lines += ["### How well the reference itself agrees with Argo", "",
+                      "INCOIS's gridded field, and GLORYS averaged to the same 1° / 10-day "
+                      "grid, each scored against the test-block Argo casts that fall in the "
+                      "cell and the 10-day window (same points for both). Read the tables "
+                      "below in this light: where INCOIS agrees with Argo less well than "
+                      "GLORYS at its own resolution does, a score against INCOIS measures "
+                      "INCOIS as much as the model.", "",
+                      "| Depth (m) | N | INCOIS r | INCOIS RMSE | INCOIS bias | GLORYS 1° r | GLORYS 1° RMSE | GLORYS 1° bias |",
+                      "|---:|---:|---:|---:|---:|---:|---:|---:|",
+                      *[f"| {config.DEPTHS[k]:g} | {r['n']} | {_fmt(r['incois'], 'r')} | "
+                        f"{_fmt(r['incois'], 'rmse')} | {_fmt(r['incois'], 'bias')} | "
+                        f"{_fmt(r['glorys'], 'r')} | {_fmt(r['glorys'], 'rmse')} | "
+                        f"{_fmt(r['glorys'], 'bias')} |"
+                        for k, r in enumerate(inc["reference_vs_argo"]) if r["n"]], ""]
+        lines += _tables(inc["table"], "INCOIS")
     for run, e in result.get("embedding", {}).items():
         lines += [f"## Embedding inspection · {run}", ""]
         if "seasons" in e:
@@ -453,7 +500,7 @@ def run() -> dict:
               "test_days": int(t.size), "contenders": list(aligned),
               "depths": config.DEPTHS.tolist(), "argo_counts": counts, "argo": table}
     try:
-        result["incois"] = incois_block(aligned, t)
+        result["incois"] = incois_block(aligned, t, meta)
     except Exception as e:  # the Argo block stands on its own; the failure is reported
         result["incois_error"] = f"{type(e).__name__}: {e}"
     from . import embed
