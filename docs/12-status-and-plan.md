@@ -31,15 +31,15 @@ What the development runs showed, in words (their figures are in the harness rep
 
 ## Interrupted at shutdown
 
-The four training runs of the main chain had just begun (`unet`, then `hybrid`,
-`unet-history`, `unet-no-currents-winds`). Nothing was scored. Everything written so far
+`runs/unet` is complete (six epochs; identical, as expected, to its development twin
+with the same config and seed). The `hybrid` run had just started and is cut off; it,
+`unet-history` and `unet-no-currents-winds` are still to train. Nothing was scored. Everything written so far
 is complete: every fetch writes to a `.part` name and renames at the end.
 
 ## Resume — in this order
 
 ```
-# 1. The four runs, one after another on the GPU (≈ 1 h; the hybrid is the slow one)
-python -m oceanembed.train configs/unet.toml
+# 1. The three remaining runs, one after another on the GPU (≈ 45 min; the hybrid is the slow one)
 python -m oceanembed.train configs/hybrid.toml
 python -m oceanembed.train configs/unet-history.toml
 python -m oceanembed.train configs/unet-no-currents-winds.toml
