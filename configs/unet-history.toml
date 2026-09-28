@@ -1,12 +1,14 @@
-# U-Net with input history: each satellite channel today and 3, 7 and 14 days earlier.
+# U-Net with input history: each satellite channel today and 7, 14 and 30 days earlier.
 # The ocean below the surface integrates past forcing; this tests whether it helps.
 name = "unet-history"
 role = "candidate"
 arch = "unet"
 seed = 26066
-lags = [0, 3, 7, 14]
+lags = [0, 7, 14, 30]
 emb = 32
+target = "anomaly"
+wd = 1e-2
 width = 32
-epochs = 40
+epochs = 6
 batch = 8
 lr = 2e-3

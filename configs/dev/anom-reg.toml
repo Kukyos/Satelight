@@ -1,0 +1,13 @@
+# Development run: validation block only, never scored on the test block.
+name = "dev-anom-reg"
+role = "development"
+arch = "unet"
+seed = 26066
+batch = 8
+lr = 2e-3
+target = "anomaly"
+epochs = 30
+crop = [64, 96]
+dropout = 0.1
+wd = 1e-2
+noise = 0.1

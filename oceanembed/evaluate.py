@@ -79,7 +79,15 @@ def in_region(lon: float, lat: float, name: str) -> bool:
 
 
 def model_runs() -> list[str]:
-    return sorted(p.parent.name for p in config.RUNS.glob("*/best.pt"))
+    """Every trained run except development runs, which exist only to choose the recipe
+    on the validation block and are never scored on the test block."""
+    import tomllib
+    out = []
+    for p in config.RUNS.glob("*/best.pt"):
+        role = tomllib.loads((p.parent / "config.toml").read_text()).get("role", "candidate")
+        if role != "development":
+            out.append(p.parent.name)
+    return sorted(out)
 
 
 ROLE_NOTE = {
@@ -96,7 +104,17 @@ def selection() -> dict:
     candidates share the train block, so their normalised losses are comparable."""
     from .train import load_config
 
-    runs = {}
+    runs, development = {}, {}
+    for p in sorted(config.RUNS.glob("dev-*/history.json")):
+        hist = json.loads(p.read_text())
+        cfg = load_config(p.parent / "config.toml")
+        best = min(hist, key=lambda h: h["val_loss"])
+        development[p.parent.name] = {
+            "target": cfg["target"], "lags": cfg["lags"], "crop": cfg.get("crop"),
+            "dropout": cfg.get("dropout", 0.0), "wd": cfg.get("wd", 1e-4),
+            "noise": cfg.get("noise", 0.0), "epochs_run": len(hist),
+            "best_epoch": best["epoch"], "val_loss": best["val_loss"],
+            "val_rmse_per_depth": best["val_rmse_per_depth"]}
     for run in model_runs():
         cfg = load_config(config.RUNS / run / "config.toml")
         hist = json.loads((config.RUNS / run / "history.json").read_text())
@@ -108,7 +126,7 @@ def selection() -> dict:
     candidates = {k: v for k, v in runs.items() if v["role"] == "candidate"}
     headline = min(candidates, key=lambda k: candidates[k]["val_loss"]) if candidates else None
     return {"rule": "lowest best validation loss among candidates (validation block only)",
-            "headline": headline, "runs": runs}
+            "headline": headline, "runs": runs, "development": development}
 
 
 def label(name: str, sel: dict) -> str:
@@ -361,6 +379,19 @@ def report(result: dict) -> str:
           f"{', '.join(v['inputs'])} | {v['best_epoch']}/{v['epochs_run']} | {v['val_loss']:.4f} | "
           + " / ".join(f"{v['val_rmse_per_depth'][i]:.3f}" for i in (0, 7, 11, 14)) + " |"
           for k, v in result["selection"]["runs"].items()],
+        "",
+        "### How the training recipe was chosen (development runs, validation block only)",
+        "",
+        "Each row is one U-Net run used to choose the recipe; none is scored on the test "
+        "block. Val loss is not comparable between the absolute and anomaly targets (it is "
+        "normalised by each target's spread); the RMSE columns are.",
+        "",
+        "| Run | Target | Lags | Crop | Dropout | Weight decay | Noise | Best epoch | Val loss | Val RMSE 0 / 100 / 300 / 1000 m (°C) |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---|",
+        *[f"| {k} | {v['target']} | {v['lags']} | {v['crop'] or '—'} | {v['dropout']} | "
+          f"{v['wd']} | {v['noise']} | {v['best_epoch']}/{v['epochs_run']} | {v['val_loss']:.4f} | "
+          + " / ".join(f"{v['val_rmse_per_depth'][i]:.3f}" for i in (0, 7, 11, 14)) + " |"
+          for k, v in result["selection"].get("development", {}).items()],
         "",
         "## Argo casts (test block)",
         "",

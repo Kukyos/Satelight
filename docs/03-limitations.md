@@ -136,6 +136,16 @@ would improve a model a lot. But neither is a satellite observation.
 > output mask identical. An independent bathymetry (GEBCO, ETOPO) would serve equally
 > and is the substitute if this is challenged. Nothing time-varying from GLORYS goes in.
 
+> **Decision, 2026-09-28: the anomaly target.** The models learn the departure from the
+> train-block day-of-year climatology of GLORYS (`runs/climatology`), and that
+> climatology is added back on output. It is fitted on training targets only, it is the
+> same on every year, and it depends only on the cell and the day of year — the same
+> information a network could memorise from its latitude, longitude and day-of-year
+> inputs. It is therefore treated as a fixed part of the model (a learned prior), not as
+> an input. What changes from day to day in the output comes from the satellite fields
+> alone. Chosen on the validation block (`13-eval-results.md`, "How the training recipe
+> was chosen").
+
 ## L10 · The embedding has to be a thing, not a claim
 
 The problem statement's title is *embedding-based*. A network with a hidden layer

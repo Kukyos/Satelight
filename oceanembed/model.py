@@ -36,8 +36,9 @@ def block(cin: int, cout: int) -> nn.Sequential:
 
 
 class UNet(nn.Module):
-    def __init__(self, cin: int, emb: int, width: int = 32):
+    def __init__(self, cin: int, emb: int, width: int = 32, dropout: float = 0.0):
         super().__init__()
+        self.drop = nn.Dropout2d(dropout)
         w = [width, width * 2, width * 4, width * 8]
         self.down = nn.ModuleList([block(cin, w[0]), block(w[0], w[1]), block(w[1], w[2])])
         self.mid = block(w[2], w[3])
@@ -55,25 +56,25 @@ class UNet(nn.Module):
             x = d(x)
             skips.append(x)
             x = F.max_pool2d(x, 2)
-        x = self.mid(x)
+        x = self.drop(self.mid(x))
         mid = x
         for up, dec, s in zip(self.up, self.dec, reversed(skips)):
-            x = dec(torch.cat([up(x), s], 1))
+            x = dec(torch.cat([up(x), self.drop(s)], 1))
         return self.head(x), mid
 
 
 class Hybrid(nn.Module):
     """Conv stem (/4) -> transformer over 26 x 60 = 1560 tokens -> conv up-path."""
 
-    def __init__(self, cin: int, emb: int, width: int = 32, dim: int = 192, depth: int = 6,
-                 heads: int = 6):
+    def __init__(self, cin: int, emb: int, width: int = 32, dropout: float = 0.0,
+                 dim: int = 192, depth: int = 6, heads: int = 6):
         super().__init__()
         self.s1 = block(cin, width)
         self.s2 = block(width, width * 2)
         self.proj = nn.Conv2d(width * 2, dim, 2, stride=2)
         self.pos = nn.Parameter(torch.zeros(1, dim, PAD_H // 4, 240 // 4))
         nn.init.trunc_normal_(self.pos, std=0.02)
-        layer = nn.TransformerEncoderLayer(dim, heads, dim * 4, dropout=0.0, activation="gelu",
+        layer = nn.TransformerEncoderLayer(dim, heads, dim * 4, dropout=dropout, activation="gelu",
                                            batch_first=True, norm_first=True)
         self.tf = nn.TransformerEncoder(layer, depth)
         self.up1 = nn.ConvTranspose2d(dim, width * 2, 2, stride=2)
@@ -100,22 +101,25 @@ class Hybrid(nn.Module):
 
 class OceanEmbed(nn.Module):
     def __init__(self, cin: int, arch: str = "unet", emb: int = 32, levels: int = 15,
-                 width: int = 32):
+                 width: int = 32, dropout: float = 0.0):
         super().__init__()
-        self.encoder = (UNet if arch == "unet" else Hybrid)(cin, emb, width)
+        self.arch = arch
+        self.encoder = (UNet if arch == "unet" else Hybrid)(cin, emb, width, dropout)
         self.decoder = nn.Sequential(
-            nn.Conv2d(emb, 128, 1), nn.GELU(), nn.Conv2d(128, 128, 1), nn.GELU(),
-            nn.Conv2d(128, levels, 1))
+            nn.Conv2d(emb, 128, 1), nn.GELU(), nn.Dropout(dropout), nn.Conv2d(128, 128, 1),
+            nn.GELU(), nn.Conv2d(128, levels, 1))
 
     def embed(self, x):
         """(N, C, 100, 240) -> per-cell embedding (N, D, 100, 240), daily (N, G).
 
         The daily embedding is the trained bottleneck itself, pooled over the basin: no
         extra layer, so nothing in it is untrained."""
-        h = x.shape[-2]
-        x = F.pad(x, (0, 0, 0, PAD_H - h))
+        h, w = x.shape[-2:]
+        # The U-Net takes any size divisible by 8 (so training can use crops); the
+        # hybrid's position embedding fixes it to the whole basin.
+        x = F.pad(x, (0, (-w) % 8, 0, (PAD_H - h) if self.arch != "unet" else (-h) % 8))
         e, mid = self.encoder(x)
-        return e[..., :h, :], mid.mean(dim=(2, 3))
+        return e[..., :h, :w], mid.mean(dim=(2, 3))
 
     def forward(self, x):
         e, _ = self.embed(x)

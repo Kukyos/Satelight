@@ -1,0 +1,9 @@
+# Development run: validation block only, never scored on the test block.
+name = "dev-anom"
+role = "development"
+arch = "unet"
+seed = 26066
+batch = 8
+lr = 2e-3
+target = "anomaly"
+epochs = 12

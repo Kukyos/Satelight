@@ -28,7 +28,19 @@ def load_config(path: str | Path) -> dict:
     cfg = tomllib.loads(Path(path).read_text())
     cfg.setdefault("inputs", config.INPUTS)
     cfg.setdefault("lags", [0])
+    # "absolute": learn temperature. "anomaly": learn the departure from the train-block
+    # day-of-year climatology (runs/climatology), which is added back on output. The
+    # climatology is a fixed prior fitted on training targets only, like a learned bias
+    # per cell and day of year; it is not a daily input (docs/03-limitations.md L9).
+    cfg.setdefault("target", "absolute")
     return cfg
+
+
+def target_offset(cfg: dict, t: np.ndarray) -> np.ndarray | float:
+    if cfg.get("target") == "anomaly":
+        from .baselines import climatology
+        return climatology(t)
+    return 0.0
 
 
 def seed_everything(seed: int) -> None:
@@ -55,7 +67,8 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
     if stats is None:
         nx = ny = None
         for p in pieces:
-            x, y, _ = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
+            x, y, t = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
+            y = y - target_offset(cfg, t)
             part = [np.nansum(x, axis=(0, 2, 3), dtype=np.float64),
                     np.nansum(x.astype(np.float64) ** 2, axis=(0, 2, 3)),
                     np.isfinite(x).sum(axis=(0, 2, 3)),
@@ -75,7 +88,7 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
     for p in pieces:
         x, y, t = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
         xa[k:k + len(t)] = data.assemble(x, t, stats, sea)
-        yn[k:k + len(t)] = data.normalise_target(y, stats)
+        yn[k:k + len(t)] = data.normalise_target(y - target_offset(cfg, t), stats)
         ts.append(t)
         k += len(t)
         del x, y
@@ -84,7 +97,7 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
 
 def build(cfg: dict) -> OceanEmbed:
     return OceanEmbed(data.n_channels(cfg["inputs"], cfg["lags"]), cfg["arch"], cfg.get("emb", 32),
-                      width=cfg.get("width", 32))
+                      width=cfg.get("width", 32), dropout=cfg.get("dropout", 0.0))
 
 
 def batches(n: int, size: int, rng: np.random.Generator | None):
@@ -135,13 +148,29 @@ def train(cfg_path: str) -> Path:
     steps = cfg["epochs"] * int(np.ceil(len(xtr) / cfg["batch"]))
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, cfg["lr"], total_steps=steps, pct_start=0.05)
     rng = np.random.default_rng(cfg["seed"])
+    # Regularisers, each chosen on the validation block: random crops of the basin (the
+    # U-Net only), Gaussian noise on the satellite channels (z-score units).
+    crop = cfg.get("crop")
+    assert not crop or cfg["arch"] == "unet", "the hybrid needs the whole basin"
+    noise = cfg.get("noise", 0.0)
+    n_sat = len(cfg["inputs"]) * len(cfg["lags"])
     history, best = [], float("inf")
     for epoch in range(cfg["epochs"]):
         model.train()
         tl, n, te = 0.0, 0, time.time()
         for idx in batches(len(xtr), cfg["batch"], rng):
-            xb = torch.from_numpy(xtr[idx]).to(device).float()
-            yb = torch.from_numpy(ytr[idx]).to(device).float()
+            xb, yb = xtr[idx], ytr[idx]
+            if crop:
+                j0 = int(rng.integers(0, config.NLAT - crop[0] + 1))
+                i0 = int(rng.integers(0, config.NLON - crop[1] + 1))
+                xb = xb[..., j0:j0 + crop[0], i0:i0 + crop[1]]
+                yb = yb[..., j0:j0 + crop[0], i0:i0 + crop[1]]
+            xb = torch.from_numpy(np.ascontiguousarray(xb)).to(device).float()
+            yb = torch.from_numpy(np.ascontiguousarray(yb)).to(device).float()
+            if noise:
+                g = torch.Generator(device=device).manual_seed(int(rng.integers(1 << 31)))
+                xb[:, :n_sat] += noise * torch.randn(xb[:, :n_sat].shape, device=device,
+                                                     generator=g) * xb[:, -1:]
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 loss = masked_mse(model(xb).float(), yb)
             opt.zero_grad(set_to_none=True)

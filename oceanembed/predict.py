@@ -52,7 +52,9 @@ def predict_span(run: str, a: date, b: date, with_embedding: bool = False,
             if with_embedding:
                 cells.append(e.float().cpu().numpy())
                 days.append(g.float().cpu().numpy())
-    y = data.denormalise_target(np.concatenate(preds), stats).astype(np.float32)
+    from .train import target_offset
+    y = (data.denormalise_target(np.concatenate(preds), stats) + target_offset(cfg, t)
+         ).astype(np.float32)
     y[:, ~level_mask()] = np.nan
     emb = (np.concatenate(cells), np.concatenate(days)) if with_embedding else None
     return y, t, emb

@@ -6,8 +6,10 @@ role = "comparison"
 arch = "unet"
 seed = 26066
 emb = 32
+target = "anomaly"
+wd = 1e-2
 width = 32
-epochs = 25
+epochs = 6
 batch = 8
 lr = 2e-3
 [splits]

@@ -92,6 +92,15 @@ Two encoders are compared by the harness:
 
 Training:
 
+- **Target:** the departure of temperature from the train-block day-of-year
+  climatology, added back on output (a fixed learned prior, see `03-limitations.md` L9).
+- **Recipe, chosen on the validation block:** six epochs, AdamW with weight decay 1e-2,
+  one-cycle learning rate. Every variant tried is listed with its validation score in
+  `13-eval-results.md` ("How the training recipe was chosen"). The first runs overfit
+  within two to four epochs: eleven years is about 4,000 highly correlated days, so the
+  schedule is kept short enough to anneal where the validation loss bottoms out. Random
+  crops, dropout, input noise and 30 days of input history were tried and did not help
+  on the validation block.
 - **Loss:** masked mean squared error on per-level z-scored temperature.
 - **Optimiser:** AdamW with a one-cycle learning rate.
 - **Precision:** bf16 autocast.
