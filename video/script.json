@@ -1,6 +1,6 @@
 {
   "_": "The film, scene by scene. check.mjs checks every number against data/eval-latest.json or `sourced`, the pace, and each clip's length; narrate.mjs reads `say` in Charlotte's voice; capture.cjs records each clip to its seconds. How it is built: docs/21-film.md.",
-  "wordsPerSecond": 2.5,
+  "wordsPerSecond": 2.3,
   "sourced": {
     "8": "config.INPUTS: eight input channels",
     "15": "config.DEPTHS: the 15 standard depths the problem statement names",
@@ -40,14 +40,14 @@
           "minSeconds": 12
         }
       ],
-      "say": "Every day, satellites measure the skin of the ocean: its temperature, its height, its salt, the wind across it. What lies underneath, they cannot see. And that is where the heat is."
+      "say": "Satellites see the ocean every day. Only the top: its temperature, salt, winds. What lies underneath, they cannot see. That is where the heat is."
     },
     {
       "id": "title",
       "card": "title",
       "seconds": 5.5,
       "minSeconds": 5,
-      "say": "This is Satelight. The ocean below, seen from space."
+      "say": "This is Satelight."
     },
     {
       "id": "index",
@@ -55,7 +55,7 @@
       "act": "",
       "seconds": 17,
       "minSeconds": 16,
-      "say": "In the next six minutes: a dive to a thousand metres, how deep to fish, the fuel under a cyclone, this morning's ocean, the years before the floats, hidden heatwaves, the sonar layer, the floats that check it all, and what is not done yet.",
+      "say": "In the next few minutes, we will go over what we built, how it works, what it is useful for, and how accurate it is. You can follow along with the timestamps below.",
       "tiles": [
         {
           "title": "The dive",
@@ -111,7 +111,7 @@
       "minSeconds": 9,
       "quote": "The objective is to estimate the three-dimensional ocean temperature using only surface satellite observations.",
       "cite": "SIH 2026 · PS 26066 · INCOIS, Ministry of Earth Sciences",
-      "say": "INCOIS asks for one thing: estimate the three-dimensional ocean temperature, using only surface satellite observations."
+      "say": "INCOIS asked for the ocean's temperature in three dimensions, using only what satellites see at the surface."
     },
     {
       "id": "dive",
@@ -124,7 +124,7 @@
           "minSeconds": 16
         }
       ],
-      "say": "So take one day in the Bay of Bengal, and go down. Sunlight fades by 200 metres, and below it no satellite sees a thing. Satelight carries on, level by level, to a thousand metres, reconstructed from the surface alone."
+      "say": "This is the Bay of Bengal. Let's go down. Sunlight fades by 200 metres, and no satellite sees below that. Satelight keeps going, level by level, to a thousand metres, from the surface alone."
     },
     {
       "id": "inputs",
@@ -139,7 +139,7 @@
         "Surface currents, east and north|OSCAR, NASA PO.DAAC",
         "Surface winds, east and north|CCMP, four synoptic times averaged to the day"
       ],
-      "say": "It reads eight fields that satellites deliver every day: sea surface temperature, salinity, sea level and its anomaly, and currents and winds, east and north. All on one grid, a quarter of a degree, every day."
+      "say": "It reads eight things satellites measure every day: sea surface temperature, salinity, sea level and its anomaly, and the currents and winds, in both directions. All put on one common grid."
     },
     {
       "id": "pipeline",
@@ -150,7 +150,7 @@
       "lines": [
         "Trained on GLORYS12, 2010 to 2020. GLORYS is the target, never an input."
       ],
-      "say": "An encoder compresses each cell's surface into 32 numbers: the embedding. A decoder turns them into temperature at the 15 standard depths, and masks every cell shallower than a level. It learned from the GLORYS reanalysis, 2010 to 2020, and never takes GLORYS in."
+      "say": "An encoder squeezes each point's surface into 32 numbers: the embedding. A decoder turns it into temperature at the 15 standard depths, and blanks out anything below the seabed. It learned from GLORYS, 2010 to 2020, never taking it in."
     },
     {
       "id": "fishing",
@@ -163,7 +163,7 @@
           "minSeconds": 14
         }
       ],
-      "say": "For fishers. INCOIS already tells them where fish are likely to gather, along fourteen stretches of coast, every day. Satelight adds how deep the warm water goes at each of those zones, or that it reaches the sea floor, from the latest day the satellites allow."
+      "say": "For fishermen. INCOIS already tells them where fish are likely to gather, every day. We add how deep the warm water goes in each of those zones, from the latest satellite day."
     },
     {
       "id": "tamil",
@@ -190,7 +190,7 @@
       "lines": [
         "The depth of the 20 °C isotherm, the core of the thermocline, from each profile's 15 levels"
       ],
-      "say": "Against held-out floats in the Bay of Bengal, climatology misses that depth by 19.3 metres, Satelight by 13.7, GLORYS by 12.0. Satelight places it 9.2 metres too deep."
+      "say": "Against held-out floats in the Bay of Bengal, climatology misses that depth by 19.3 metres, Satelight by 13.7, and GLORYS by 12.0. On average, it puts it 9.2 metres too deep."
     },
     {
       "id": "cyclone",
@@ -203,7 +203,7 @@
           "minSeconds": 14
         }
       ],
-      "say": "For forecasters: the fuel a cyclone draws on, the heat stored above 26 degrees, mapped every day. Follow Mocha up the Bay on the India Meteorological Department's own track, and watch the fuel drain in its wake."
+      "say": "For forecasters. A cyclone feeds on heat stored in water above 26 degrees. We map that fuel every day. Follow Cyclone Mocha up the Bay, and watch the fuel drain behind it."
     },
     {
       "id": "heat",
@@ -214,7 +214,7 @@
       "lines": [
         "Tropical cyclone heat potential: the heat above 26 °C, from each profile's 15 levels"
       ],
-      "say": "Against the floats, climatology misses that heat by 21.0 kJ/cm². Satelight misses by 12.9, and GLORYS by 11.9. In the Bay of Bengal, Satelight and GLORYS are level."
+      "say": "Against the floats, climatology misses that heat by 21.0 kilojoules per square centimetre, Satelight by 12.9, and GLORYS by 11.9. In the Bay of Bengal, Satelight matches GLORYS."
     },
     {
       "id": "now",
@@ -227,7 +227,7 @@
           "minSeconds": 12
         }
       ],
-      "say": "GLORYS arrives months after the fact. Satelight needs only what the satellites have already delivered. Press Now, and it shows the ocean of the twenty-fourth of September, 2026: days ago, not months."
+      "say": "GLORYS arrives months late. Satelight only needs what the satellites have already sent. Press Now, and you see the ocean of the twenty-fourth of September, 2026. Days ago, not months."
     },
     {
       "id": "latency",
@@ -248,7 +248,7 @@
       "source": "nowcast-fast",
       "seconds": 19,
       "minSeconds": 18,
-      "say": "Scored against the real-time floats of those three months, with four fields it beats climatology from the surface to 150 metres, over the whole box and in the Bay; in the Arabian Sea, only to 75. With all eight, a month behind, to 200 metres in both basins."
+      "say": "Against the real-time floats of those three months, four fields beat climatology to 150 metres, in the whole box and the Bay, but only to 75 in the Arabian Sea. All eight, a month late, reach 200 metres in both seas."
     },
     {
       "id": "prefloat",
@@ -261,7 +261,7 @@
           "minSeconds": 9
         }
       ],
-      "say": "It works backwards too. This is November 1997: the whole North Indian Ocean, reconstructed at every depth, from satellites that were already watching."
+      "say": "It works backwards too. This is November 1997: the whole North Indian Ocean, rebuilt at every depth, from satellites that were already watching."
     },
     {
       "id": "floats",
@@ -272,7 +272,7 @@
       "lines": [
         "Argo profiles per year in 45–105°E, 5–30°N, from the Argo GDAC profile index."
       ],
-      "say": "From 1993 to 2000, not one Argo float surfaced in this box. Satellites saw every day."
+      "say": "From 1993 to 2000, not a single Argo float surfaced in this box. But the satellites saw every day."
     },
     {
       "id": "prefloat-rmse",
@@ -281,7 +281,7 @@
       "source": "prefloat",
       "seconds": 15,
       "minSeconds": 15,
-      "say": "Scored on 2005 to 2009, years before its training, it beats climatology at every depth, in both basins, and stays behind GLORYS down to 500 metres."
+      "say": "We tested it on 2005 to 2009, years before anything it trained on. It beats climatology at every depth, in both seas, and stays behind GLORYS down to 500 metres."
     },
     {
       "id": "heatwave",
@@ -294,7 +294,7 @@
           "minSeconds": 12
         }
       ],
-      "say": "Some heatwaves never reach the surface. A warm layer, fifty to a hundred and fifty metres down, under a sea that looks normal from space. Magenta marks where Satelight finds one."
+      "say": "Some heatwaves hide below the surface, 50 to 150 metres down, under a sea that looks normal from space. Magenta marks where Satelight finds them."
     },
     {
       "id": "hidden",
@@ -305,7 +305,7 @@
       "lines": [
         "The 50–150 m layer above its 90th percentile for the day and place, the surface not (Hobday et al. 2016, applied to a layer). One day per float."
       ],
-      "say": "Against the floats, it catches 182 of the 336 hidden layers they found, with a skill of 0.31, where GLORYS reaches 0.49. It over-flags, 484 false alarms, consistent with its warm thermocline."
+      "say": "Against the floats, Satelight catches 182 of the 336 hidden layers they found. Its skill is 0.31, GLORYS reaches 0.49. It also over-flags, 484 false alarms, which fits its warm thermocline."
     },
     {
       "id": "sonar",
@@ -318,7 +318,7 @@
           "minSeconds": 12
         }
       ],
-      "say": "And the sonar layer: the depth of the mixed layer, where a hull sonar's surface duct ends. This one is not there yet. Over the whole box it misses by 15.4 metres, climatology by 14.4, GLORYS by 11.5."
+      "say": "The sonar layer: the depth of the mixed layer, where a hull sonar's surface duct ends. This one isn't there yet. Over the whole box it misses by 15.4 metres, climatology by 14.4, GLORYS by 11.5."
     },
     {
       "id": "check",
@@ -332,7 +332,7 @@
           "minSeconds": 9
         }
       ],
-      "say": "The headline scores are checked the same way: against Argo floats from 2023 and 2024, which the model never saw, each with its quality flag, data mode and source file."
+      "say": "Click a float, and it is checked against every model. Floats from 2023 and 2024, never seen in training, each with its quality flag, data mode and file."
     },
     {
       "id": "rmse",
@@ -340,7 +340,7 @@
       "act": "What the floats say",
       "seconds": 16.5,
       "minSeconds": 16,
-      "say": "Depth by depth, Satelight beats climatology from the surface to 300 metres, in both basins, and stays behind GLORYS, which had already assimilated these floats. The thermocline is the hard part: the error peaks there, and it runs warm."
+      "say": "Climatology is the floor, GLORYS the ceiling. Satelight beats climatology down to 300 metres, in both seas, and stays behind GLORYS, which already took in these floats. The thermocline is hardest, and runs warm."
     },
     {
       "id": "embedding",
@@ -352,7 +352,7 @@
       "lines": [
         "unet-abs's embedding, its first three components as colour, 15 July 2023: water that looks alike to the model, painted alike."
       ],
-      "say": "The embedding is saved every day, as a file you can open. One encoder's embedding predicts the mixed-layer depth, never trained on, better than the raw inputs: R squared 0.351, against 0.255. No single embedding also sorts the seasons. That proof is half met."
+      "say": "The embedding is saved every day, as a file. One encoder's embedding predicts the mixed-layer depth, never trained on, better than the raw inputs: R squared 0.351 against 0.255. No single one also sorts the seasons. That proof is half met."
     },
     {
       "id": "evidence",
@@ -360,7 +360,7 @@
       "act": "Measured",
       "seconds": 10,
       "minSeconds": 10,
-      "say": "Every number in this film comes from one harness, which anyone can run again from the repository."
+      "say": "Every number in this video comes from one harness we built. Anyone can run it again with one command."
     },
     {
       "id": "notyet",
@@ -374,14 +374,14 @@
         "The sonar layer|no better than climatology yet, except in the Bay of Bengal",
         "The translations|machine-made: each needs a native speaker's check"
       ],
-      "say": "What is not done yet: the embedding proof, a warm thermocline, the sonar layer, and translations that still need a native speaker. Each one is written down."
+      "say": "What is not done yet: the embedding proof, a warm thermocline, the sonar layer, and translations that need a native speaker's check. Each one is written down."
     },
     {
       "id": "end",
       "card": "end",
       "seconds": 7,
       "minSeconds": 7,
-      "say": "Satelight. The code, the documents, and every number are in the repository."
+      "say": "That is Satelight. Everything, every number included, is at the link on screen."
     }
   ]
 }
