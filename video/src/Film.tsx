@@ -165,7 +165,7 @@ const PIPE: [string, string][] = [
   ['Harness', 'held-out Argo, per depth and basin, beside climatology and GLORYS'],
 ];
 const Pipeline: React.FC<{ s: Scene }> = ({ s }) => {
-  const step = Math.floor((frames(s) - 90) / PIPE.length);
+  const step = Math.floor(frames(s) * 0.55 / PIPE.length);   // all six up by just past half-way
   return (
     <Card act={s.act}>
       <div style={{ display: 'flex', gap: 18, alignItems: 'stretch' }}>
@@ -173,7 +173,7 @@ const Pipeline: React.FC<{ s: Scene }> = ({ s }) => {
           <React.Fragment key={h}>
             {i > 0 && <Rise at={10 + i * step}><div style={{ fontSize: 44, color: C.faint, marginTop: 70 }}>→</div></Rise>}
             <Rise at={10 + i * step} style={{ flex: 1 }}>
-              <div style={{ border: `1px solid ${C.faint}`, borderTop: `3px solid ${h === 'Embedding' ? C.accent : C.dim}`, padding: '24px 22px', height: 250 }}>
+              <div style={{ border: `1px solid ${C.faint}`, borderTop: `3px solid ${h === 'Embedding' ? C.accent : C.dim}`, padding: '24px 22px', minHeight: 330 }}>
                 <div style={{ fontSize: 32, fontWeight: 400, marginBottom: 16, color: h === 'Embedding' ? C.accent : C.ink }}>{h}</div>
                 <div style={{ fontSize: 22, color: C.dim, lineHeight: 1.4 }}>{t}</div>
               </div>

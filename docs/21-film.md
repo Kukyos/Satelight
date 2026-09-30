@@ -1,6 +1,6 @@
 # The film
 
-A film of the running prototype, about **6 minutes**, cut in code with Remotion, in the
+A film of the running prototype, **5 min 45 s**, cut in code with Remotion, in the
 same grammar as PS 26067's film: near-black cards with one idea each, footage of the
 viewer with lower thirds, one narrator (ElevenLabs' **Charlotte**) reading every line. The
 accent is the viewer's own yellow.
@@ -52,8 +52,9 @@ switches wait for their data on the real clock between frames, so a load is shor
 film than it was. Clip lengths come from `script.json`, and `check.mjs` fails if a clip
 does not match.
 
-`render.mjs` renders the picture in 1,500-frame segments, kept between runs, then the
-audio once, and joins them. A segment that crashes the headless browser is retried, and a
+`render.mjs` renders the picture in 1,500-frame segments, kept between runs, builds the
+sound with ffmpeg (the narration is the only sound: each line half a second into its scene,
+as `Film.tsx` places it), and joins them. A segment that crashes the headless browser is retried, and a
 re-run renders only what is missing. Inter is served from `public/fonts/` (the latin
 variable file from `@fontsource-variable/inter`) as a plain `@font-face`, so a render never
 waits on a font server. A `FontFace().load()` wrapped in `delayRender()` never settled
