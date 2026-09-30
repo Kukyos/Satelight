@@ -54,9 +54,10 @@ does not match.
 
 `render.mjs` renders the picture in 1,500-frame segments, kept between runs, then the
 audio once, and joins them. A segment that crashes the headless browser is retried, and a
-re-run renders only what is missing. Inter comes from the `@fontsource-variable/inter`
-package and is bundled, so a render never waits on a font server; no frame is taken
-before it has loaded.
+re-run renders only what is missing. Inter is served from `public/fonts/` (the latin
+variable file from `@fontsource-variable/inter`) as a plain `@font-face`, so a render never
+waits on a font server. A `FontFace().load()` wrapped in `delayRender()` never settled
+inside the render tabs and timed the render out, so the font is not awaited that way.
 
 `narrate.mjs` needs `ELEVENLABS_API_KEY` in `.env` (never committed). A line re-renders
 only when its text or the voice changes; the mp3s in `public/voice/` are committed, so a

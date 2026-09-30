@@ -1,20 +1,16 @@
-// Copied from SIH26P3 video/src/Root.tsx.
+// Copied from SIH26P3 video/src/Root.tsx; the font is served from public/ instead of Google.
 import React from 'react';
-import { Composition, continueRender, delayRender } from 'remotion';
-// Inter from the npm package, bundled: the render never waits on a font server.
-import '@fontsource-variable/inter';
+import { Composition, staticFile } from 'remotion';
 import { Film, TOTAL, FPS } from './Film';
 
+// Inter, variable weight, from public/fonts (copied from @fontsource-variable/inter), so a
+// render never waits on a font server. Plain CSS: a FontFace().load() wrapped in
+// delayRender() never settled inside render tabs and timed the render out.
+const FONT_CSS = `@font-face { font-family: 'Inter'; font-weight: 100 900; font-display: block;
+  src: url('${staticFile('fonts/inter-latin-wght-normal.woff2')}') format('woff2'); }`;
 
-// No frame is taken before the font has loaded.
-const fontReady = delayRender('Inter');
-// ponytail: capped at 8 s; in some render tabs fonts.load never settles though the face is
-// bundled and already in use, so the cap keeps a tab from timing out the render.
-Promise.race([
-  Promise.all([200, 300, 400, 500, 600].map((w) => document.fonts.load(`${w} 40px 'Inter Variable'`))),
-  new Promise((r) => setTimeout(r, 8000)),
-]).finally(() => continueRender(fontReady));
+const WithFont: React.FC = () => (<><style>{FONT_CSS}</style><Film /></>);
 
 export const RemotionRoot: React.FC = () => (
-  <Composition id="Film" component={Film} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
+  <Composition id="Film" component={WithFont} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
 );

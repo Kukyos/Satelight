@@ -11,7 +11,7 @@ import { counts, cyclone, depths, evidence, gaps, harnessCommand, heat, repo, rm
 
 // Near-black ground, one idea per card, light type, one accent: the viewer's own yellow.
 const C = { ground: '#05080C', ink: '#F2F4F7', dim: '#8C94A1', faint: '#4A525E', accent: '#F5C542', warn: '#E8876A', navy: '#0D1B2A' };
-const FONT = "'Inter Variable', Inter, sans-serif";
+const FONT = 'Inter, sans-serif';
 export const FPS = 30;
 
 type Clip = { name: string; seconds: number };
