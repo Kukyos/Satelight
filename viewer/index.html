@@ -107,6 +107,18 @@
   .here { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--shelf);
     border: 1px solid var(--shelf-hi); font-size: 12px; }
   .here b { color: var(--argo); font-weight: 600; }
+  .pfz-pick { display: flex; gap: 6px; margin-bottom: 8px; }
+  .pfz-pick select { flex: 1; background: var(--shelf); border: 1px solid var(--shelf-hi);
+    border-radius: 6px; padding: 4px 6px; }
+  .zone { padding: 8px 10px; border-radius: 8px; background: var(--shelf); margin-bottom: 6px;
+    font-size: 12.5px; line-height: 1.45; display: flex; gap: 8px; align-items: flex-start; }
+  .zone button { flex: none; background: none; border: 1px solid var(--shelf-hi); border-radius: 50%;
+    width: 28px; height: 28px; cursor: pointer; color: var(--argo); }
+  .now { border: 1px solid var(--shelf-hi); background: var(--shelf); border-radius: 999px;
+    padding: 6px 14px; cursor: pointer; color: var(--argo); font-weight: 600; }
+  .badge { display: inline-block; background: var(--argo); color: var(--abyss); font-weight: 700;
+    font-size: 11px; letter-spacing: .08em; padding: 2px 8px; border-radius: 4px; margin-right: 8px;
+    vertical-align: 2px; }
 
   #time { grid-area: time; background: var(--abyss); display: flex; align-items: center;
     gap: 14px; padding: 0 18px; }
@@ -194,6 +206,7 @@
 
   <div id="time">
     <button id="play" aria-label="Play">▶</button>
+    <button class="now" id="now" title="The latest day the satellites allow">Now</button>
     <input id="day" type="range" min="0" max="0" value="0" aria-label="Day" />
     <span class="span" id="span"></span>
   </div>
@@ -205,6 +218,14 @@
       <p class="lede" id="lens-read"></p>
       <div id="lens-scores"></div>
       <div class="here" id="lens-here" hidden></div>
+      <div id="pfz" hidden>
+        <h2 style="margin-top:16px">INCOIS fishing zones, today</h2>
+        <p class="lede" id="pfz-lede"></p>
+        <div class="pfz-pick"><select id="pfz-sector" aria-label="Sector"></select>
+          <select id="pfz-lang" aria-label="Language"></select></div>
+        <div id="pfz-list"></div>
+        <p class="note" id="pfz-note"></p>
+      </div>
     </section>
     <section>
       <h2>One column of water</h2>

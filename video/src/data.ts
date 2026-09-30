@@ -16,6 +16,12 @@ const E = e as unknown as {
     tchp_box_mean: Record<string, { before: number; after: number }> }>;
   embedding: Record<string, { mld_probe?: Record<string, { r2_test: number }> }>;
   embedding_screen: { chosen: string };
+  heatwave: Record<string, Record<string, { n: number; observed: number; by: Record<string,
+    { hits: number; false_alarms: number; misses: number; pod: number | null; far: number | null; hss: number | null }> }>>;
+  nowcast: { latency: { measured: string; sources: Record<string, { last_day: string; days_behind: number }> };
+    tiers: Record<string, { run: string; days: [string, string]; casts: number; argo: Record<string, Record<string, S[]>> }> };
+  prefloat: { floats: { profiles_per_year: Record<string, number> }; casts: number; scored: [string, string];
+    argo: Record<string, Record<string, S[]>> };
 };
 
 export const HEAD = `${E.selection.headline} (selected)`;
@@ -84,6 +90,53 @@ export const evidence = [
   { value: `${f(100 * gap[BOX][HEAD][at(0)]!, 0)} %`, label: 'of the floor-to-ceiling gap closed at the surface' },
   { value: s4.emb, label: `mixed-layer probe R² on the embedding (raw inputs ${s4.raw})` },
 ];
+
+// A quantity from the hazard block (D20, MLD, TCHP) per basin, for the bar cards.
+export const quantity = (q: string) => regions.map(([key, title]) => ({
+  title, clim: E.hazard[q][key].climatology.rmse!, ours: E.hazard[q][key][HEAD].rmse!,
+  glorys: E.hazard[q][key]['GLORYS (ceiling)'].rmse!,
+}));
+
+const HW = E.heatwave['Hidden: warm layer, normal surface'];
+export const hidden = (() => {
+  const r = HW[BOX], b = HW['Bay of Bengal'];
+  const o = r.by[HEAD], g = r.by['GLORYS (ceiling)'], ob = b.by[HEAD];
+  return [
+    { value: `${o.hits} of ${r.observed}`, label: 'hidden warm layers Argo found, flagged by Satelight' },
+    { value: f(o.hss!, 2), label: `skill (Heidke; GLORYS ${f(g.hss!, 2)}, climatology 0)` },
+    { value: `${ob.hits} of ${b.observed}`, label: `in the Bay of Bengal, skill ${f(ob.hss!, 2)}` },
+    { value: thousands(o.false_alarms), label: 'false alarms: the warm thermocline over-flags' },
+  ];
+})();
+
+const NL = E.nowcast.latency;
+export const latency = Object.entries(NL.sources).map(([k, v]) => ({
+  name: ({ sst: 'Sea surface temperature', sss: 'Salinity', ssh: 'Sea level', oscar: 'Currents',
+           ccmp: 'Winds', glorys: 'GLORYS reanalysis' } as Record<string, string>)[k] ?? k,
+  days: v.days_behind, last: v.last_day, model: k === 'glorys',
+}));
+export const latencyMeasured = NL.measured;
+
+// The nowcast tier against real-time Argo, beside climatology, at a few depths.
+export const nowcastScore = (tier: string) => {
+  const t = E.nowcast.tiers[tier];
+  const reg = t.argo[BOX];
+  const name = Object.keys(reg).find((k) => k.startsWith('nowcast'))!;
+  const at = (d: number) => depths.indexOf(d);
+  return { days: t.days, casts: thousands(t.casts),
+    rows: [0, 50, 100, 300].map((d) => ({ d, clim: reg.climatology[at(d)].rmse!, ours: reg[name][at(d)].rmse! })) };
+};
+
+export const floatsPerYear = Array.from({ length: 2011 - 1993 }, (_, i) => 1993 + i)
+  .map((y) => ({ y, n: E.prefloat.floats.profiles_per_year[String(y)] ?? 0 }));
+export const prefloatScore = (() => {
+  const reg = E.prefloat.argo[BOX];
+  const name = Object.keys(reg).find((k) => k.includes('before the floats'))!;
+  const at = (d: number) => depths.indexOf(d);
+  return { casts: thousands(E.prefloat.casts), scored: E.prefloat.scored,
+    rows: [0, 50, 100, 300].map((d) => ({ d, clim: reg.climatology[at(d)].rmse!, ours: reg[name][at(d)].rmse!,
+                                         glorys: reg['GLORYS (ceiling)'][at(d)].rmse! })) };
+})();
 
 export const harnessCommand = 'python -m satelight.evaluate';
 export const repo = 'github.com/Kukyos/Satelight';

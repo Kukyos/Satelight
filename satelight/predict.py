@@ -84,9 +84,11 @@ def _provenance(run: str, cfg: dict) -> dict:
     }
 
 
-def write_daily(run: str, y: np.ndarray, t: np.ndarray, cfg: dict) -> None:
-    DAILY_DIR.mkdir(parents=True, exist_ok=True)
-    prov = json.dumps(_provenance(run, cfg))
+def write_daily(run: str, y: np.ndarray, t: np.ndarray, cfg: dict,
+                out_dir: Path = DAILY_DIR, extra: dict | None = None) -> None:
+    """`out_dir` and `extra` (nowcast.py): another folder, and provenance to add."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prov = json.dumps({**_provenance(run, cfg), **(extra or {})})
     for i, day in enumerate(t):
         ds = xr.Dataset(
             {"thetao": (("depth", "lat", "lon"), y[i], {
@@ -104,16 +106,16 @@ def write_daily(run: str, y: np.ndarray, t: np.ndarray, cfg: dict) -> None:
                    "Conventions": "CF-1.8", "institution": "SIH 2026 PS 26066",
                    "resolution": "0.25 degree, daily, 15 standard depths",
                    "provenance": prov})
-        ds.to_netcdf(DAILY_DIR / f"Satelight_thetao_{str(day).replace('-', '')}.nc",
+        ds.to_netcdf(out_dir / f"Satelight_thetao_{str(day).replace('-', '')}.nc",
                      encoding={"thetao": {"zlib": True, "complevel": 4}})
 
 
-def write_manifest(run: str, a: date, b: date, t: np.ndarray) -> None:
+def write_manifest(run: str, a: date, b: date, t: np.ndarray, out_dir: Path = DAILY_DIR) -> None:
     """The span asked for, the days written, and each day skipped with its reason, so a
     gap in the daily files is recorded where the output lives."""
     want = np.arange(np.datetime64(a), np.datetime64(b) + np.timedelta64(1, "D"))
     skipped = sorted(set(want.astype(str)) - set(t.astype("datetime64[D]").astype(str)))
-    (DAILY_DIR / "manifest.json").write_text(json.dumps({
+    (out_dir / "manifest.json").write_text(json.dumps({
         "model_run": run, "span": [str(a), str(b)], "days_written": int(len(t)),
         "days_skipped": {d: "an input has no value over the box that day; see the input "
                             "cube's provenance (missing_days / empty_days)" for d in skipped},

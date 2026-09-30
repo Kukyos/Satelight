@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -490,6 +490,134 @@ def hazard_block(meta: list[dict]) -> dict:
     return out
 
 
+def nowcast_block() -> dict | None:
+    """The nowcast (nowcast.py) against real-time Argo: each tier on its own days, beside
+    climatology, per depth and region. There is no GLORYS ceiling: GLORYS does not reach
+    these days, which is why a nowcast is worth having. Also carries the measured input
+    delays and the reprocessed-vs-near-real-time join, as nowcast.py wrote them."""
+    import xarray as xr
+
+    from . import nowcast
+    from .baselines import climatology
+    tiers = {k: sorted((nowcast.OUT / k).glob("Satelight_thetao_*.nc")) for k in nowcast.TIERS}
+    if not any(tiers.values()):
+        return None
+    sea = data.sea_mask()
+    out = {"tiers": {}, "latency": None, "join": None}
+    for f, key in ((nowcast.LATENCY, "latency"), (config.DATA / "nowcast-join.json", "join")):
+        if f.exists():
+            out[key] = json.loads(f.read_text())
+    for tier, files in tiers.items():
+        if not files:
+            continue
+        t = np.array([np.datetime64(f"{f.stem[-8:-4]}-{f.stem[-4:-2]}-{f.stem[-2:]}") for f in files])
+        v = np.stack([xr.open_dataset(f)["thetao"].values for f in files])
+        casts = argo.load_period(t[0].astype(object), t[-1].astype(object))
+        modes: dict[str, int] = {}
+        rows = []
+        for c in casts:
+            i = int(np.floor((c.lon - config.LON_EDGES[0]) / config.RES))
+            j = int(np.floor((c.lat - config.LAT_EDGES[0]) / config.RES))
+            d = np.searchsorted(t, np.datetime64(c.time, "D"))
+            if not (0 <= i < config.NLON and 0 <= j < config.NLAT) or not sea[j, i]:
+                continue
+            if d >= t.size or t[d] != np.datetime64(c.time, "D") or not c.accepted.any():
+                continue
+            obs = profile_on_depths(c.depth, c.value, c.accepted)
+            if not np.isfinite(obs).any():
+                continue
+            modes[c.data_mode] = modes.get(c.data_mode, 0) + 1
+            rows.append((d, j, i, obs, c.lon, c.lat))
+        if not rows:
+            out["tiers"][tier] = {"casts": 0}
+            continue
+        obs = np.array([r[3] for r in rows])
+        clim = climatology(t)
+        vals = {"climatology": np.array([clim[d, :, j, i] for d, j, i, *_ in rows]),
+                f"nowcast {tier} ({nowcast.TIERS[tier]})": np.array([v[d, :, j, i] for d, j, i, *_ in rows])}
+        common = np.isfinite(obs)
+        for x in vals.values():
+            common &= np.isfinite(x)
+        table = {}
+        for region in REGIONS:
+            inside = np.array([in_region(r[4], r[5], region) for r in rows])
+            table[region] = {n: [scores(x[common[:, k] & inside, k], obs[common[:, k] & inside, k],
+                                        vals["climatology"][common[:, k] & inside, k] if n != "climatology" else None)
+                                 for k in range(config.DEPTHS.size)] for n, x in vals.items()}
+        out["tiers"][tier] = {"run": nowcast.TIERS[tier], "days": [str(t[0]), str(t[-1])],
+                              "n_days": int(t.size), "casts": len(rows), "data_modes": modes,
+                              "argo": table}
+    return out
+
+
+def prefloat_block() -> dict | None:
+    """Before the floats (prefloat.py): the headline run over 2005-2009, before its
+    training era and before satellite salinity, scored against the Argo casts of those
+    years beside climatology and GLORYS, per depth and region. Labelled a comparison.
+    Also carries the measured Argo profiles per year in the box."""
+    import xarray as xr
+
+    from . import prefloat
+    from .baselines import climatology
+    a, b = prefloat.SCORED
+    files = {f.stem[-8:]: f for f in prefloat.OUT.glob("Satelight_thetao_*.nc")}
+    if not files:
+        return None
+    out = {"run": prefloat.RUN, "scored": [str(a), str(b)], "floats": None}
+    if prefloat.FLOATS.exists():
+        out["floats"] = json.loads(prefloat.FLOATS.read_text())
+    sea = data.sea_mask()
+    casts = argo.load_period(a, b)
+    by_year: dict[int, list] = {}
+    for c in casts:
+        day = np.datetime64(c.time, "D")
+        i = int(np.floor((c.lon - config.LON_EDGES[0]) / config.RES))
+        j = int(np.floor((c.lat - config.LAT_EDGES[0]) / config.RES))
+        key = str(day).replace("-", "")
+        if not (0 <= i < config.NLON and 0 <= j < config.NLAT) or not sea[j, i]:
+            continue
+        if key not in files or not c.accepted.any():
+            continue
+        obs = profile_on_depths(c.depth, c.value, c.accepted)
+        if np.isfinite(obs).any():
+            by_year.setdefault(int(str(day)[:4]), []).append((day, j, i, obs, c.lon, c.lat, c.data_mode))
+    rows, vals = [], {"climatology": [], f"{prefloat.RUN} (comparison, before the floats)": [],
+                      "GLORYS (ceiling)": []}
+    for y, rs in sorted(by_year.items()):
+        g, tg = data._read("glorys", "thetao", date(y, 1, 1), date(y, 12, 31))
+        opened: dict = {}                    # one read per day, not per cast
+        for day, j, i, obs, lon, lat, mode in rs:
+            key = str(day).replace("-", "")
+            if key not in opened:
+                with xr.open_dataset(files[key]) as ds:
+                    opened = {key: ds["thetao"].values}
+            rec = opened[key][:, j, i]
+            k = int(np.searchsorted(tg, day))
+            vals["climatology"].append(climatology(np.array([day]))[0][:, j, i])
+            vals[f"{prefloat.RUN} (comparison, before the floats)"].append(rec)
+            vals["GLORYS (ceiling)"].append(g[k, :, j, i] if k < tg.size and tg[k] == day else np.full(15, np.nan))
+            rows.append((obs, lon, lat, mode))
+    if not rows:
+        out["casts"] = 0
+        return out
+    obs = np.array([r[0] for r in rows])
+    vals = {k: np.array(v) for k, v in vals.items()}
+    common = np.isfinite(obs)
+    for x in vals.values():
+        common &= np.isfinite(x)
+    table = {}
+    for region in REGIONS:
+        inside = np.array([in_region(r[1], r[2], region) for r in rows])
+        table[region] = {n: [scores(x[common[:, k] & inside, k], obs[common[:, k] & inside, k],
+                                    vals["climatology"][common[:, k] & inside, k] if n != "climatology" else None)
+                             for k in range(config.DEPTHS.size)] for n, x in vals.items()}
+    modes: dict[str, int] = {}
+    for r in rows:
+        modes[r[3]] = modes.get(r[3], 0) + 1
+    out.update(casts=len(rows), data_modes=modes, argo=table)
+    return out
+
+
 def gap_closed(table: dict) -> dict:
     """Share of the gap between the floor and the ceiling that a contender closes, per
     depth and region: (RMSE climatology - RMSE model) / (RMSE climatology - RMSE GLORYS).
@@ -666,6 +794,54 @@ def _novelty_lines(result: dict) -> list[str]:
                     lines.append(f"| {n} | {v['hits']} | {v['false_alarms']} | {v['misses']} | "
                                  f"{f(v['pod'])} | {f(v['far'])} | {f(v['hss'])} |")
                 lines.append("")
+    nc = result.get("nowcast")
+    if nc:
+        lines += ["## Nowcast: the reconstruction on days no reanalysis covers yet", "",
+                  "The model run on near-real-time inputs (`satelight/nowcast.py`), scored against "
+                  "the Argo casts of those days, most of them real-time (data mode R: raw values "
+                  "with real-time QC, levels failing it counted as rejected). GLORYS ends before "
+                  "these days, so there is no ceiling to show: that absence is why a nowcast is "
+                  "worth having. Climatology is the floor.", ""]
+        lat = nc.get("latency")
+        if lat:
+            lines += [f"### How late each input is (measured {lat['measured']})", "",
+                      "| Source | Dataset | Last day | Days behind |", "|---|---|---|---:|",
+                      *[f"| {k} | `{v['dataset']}` | {v['last_day']} | {v['days_behind']} |"
+                        for k, v in lat["sources"].items()], ""]
+        jn = nc.get("join")
+        if jn:
+            lines += [f"### Reprocessed minus near-real-time inputs, {jn['span'][0]} → {jn['span'][1]}", "",
+                      "The same field from the product the model was trained on and from the one "
+                      "the nowcast reads, over the box on the days both hold.", "",
+                      "| Input | Days | Mean difference | RMS difference | Spread of the input | r |",
+                      "|---|---:|---:|---:|---:|---:|",
+                      *[f"| {k} | {v['days']} | {v['mean_diff']:+.3f} | {v['rms_diff']:.3f} | "
+                        f"{v['std_rep']:.3f} | {v['r']:.3f} |" if v.get("days") else f"| {k} | 0 | — | — | — | — |"
+                        for k, v in jn["variables"].items()], ""]
+        for tier, r in nc["tiers"].items():
+            if not r.get("casts"):
+                continue
+            lines += [f"### Tier `{tier}` ({r['run']}): {r['days'][0]} → {r['days'][1]}, "
+                      f"{r['n_days']} days, {r['casts']} casts (data modes: "
+                      + ", ".join(f"{k} {v}" for k, v in sorted(r["data_modes"].items())) + ")", ""]
+            lines += _tables(r["argo"], "Nowcast")
+    pf = result.get("prefloat")
+    if pf:
+        lines += ["## Before the floats: 1993–2009 (comparison)", "",
+                  f"The headline run (`{pf['run']}`) over the extended cube. Before about 2010 the "
+                  "salinity input is not satellite salinity, and the model was trained on "
+                  "2010–2020, so this is a labelled comparison, not the product.", ""]
+        fl = pf.get("floats")
+        if fl:
+            per = fl["profiles_per_year"]
+            lines += [f"### Argo profiles per year in the box (GDAC index, counted {fl['counted']})", "",
+                      "| Year | " + " | ".join(str(y) for y in range(1993, 2011)) + " |",
+                      "|---|" + "---:|" * 18,
+                      "| Profiles | " + " | ".join(str(per.get(str(y), 0)) for y in range(1993, 2011)) + " |", ""]
+        if pf.get("casts"):
+            lines += [f"### Scored against Argo, {pf['scored'][0]} → {pf['scored'][1]}: {pf['casts']} casts "
+                      "(data modes: " + ", ".join(f"{k} {v}" for k, v in sorted(pf["data_modes"].items())) + ")", ""]
+            lines += _tables(pf["argo"], "Before the floats")
     cy = result.get("cyclones")
     if cy:
         lines += ["## Cyclone wakes in the test block (case study, not validation)", "",
@@ -836,6 +1012,8 @@ def run() -> dict:
     result["gap_closed"] = gap_closed(table)
     result["hazard"] = hazard_block(meta)
     result["heatwave"] = heatwave_block(meta)
+    result["nowcast"] = nowcast_block()
+    result["prefloat"] = prefloat_block()
     result["cyclones"] = cyclone_block(aligned, t, head)
     try:
         result["incois"] = incois_block(aligned, t, meta)

@@ -30,6 +30,7 @@ import { CubeData, type DepthAxis } from "./cube/data";
 import { position, rgbFor, type Style } from "./cube/paint";
 import { CubeScene } from "./cube/scene";
 import { Planet } from "./globe";
+import { LANGS, type Lang, type PfzPoint, SECTOR_LANG, Zones, sentence, speak } from "./advisory";
 import { LENSES, type LensName, Track, heatwaveLegend, lensScores, lensStyle, lensTop } from "./lens";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -68,6 +69,8 @@ let cube: CubeScene;
 let viewer: Viewer;
 let planet: Planet;
 let track: Track;
+let zones: Zones;
+let pfzPoints: PfzPoint[] = [];
 const castLines = new PolylineCollection();
 const castTops = new PointPrimitiveCollection();
 let casts: Cast[] = [];
@@ -172,13 +175,17 @@ async function drawCube(fly = false): Promise<void> {
     lastCube = { data, cut: { lon0: r.lons[0], lon1: r.lons[r.lons.length - 1], lat0: r.lats[0],
                               lat1: r.lats[r.lats.length - 1] }, height: widthM * 0.36 };
     legend(top?.style ?? s);
-    await drawTrack();
+    await Promise.all([drawTrack(), drawZones()]);
     void paintOcean(s);
     drawCasts();
     notice(null);
     if (fly) aim();
   } catch (e) {
-    notice(e instanceof ApiError ? `Nothing to draw for ${state.day}: ${e.message}` : String(e));
+    const tier = meta.nowcast?.[state.day];
+    notice(tier && state.field !== "satelight"
+      ? `${state.day} is a nowcast day: GLORYS does not reach it yet, so there is no ` +
+        `${FIELD_LABEL[state.field]} to show. That gap is what the nowcast fills.`
+      : e instanceof ApiError ? `Nothing to draw for ${state.day}: ${e.message}` : String(e));
   }
   viewer.scene.requestRender();
 }
@@ -330,6 +337,77 @@ function dive(): void {
   requestAnimationFrame(step);
 }
 
+// ------------------------------------------------------------------ fishing zones
+
+const lastDay = () => meta.days[meta.days.length - 1];
+
+async function drawZones(): Promise<void> {
+  const box = $("pfz");
+  const on = state.lens === "fishing";
+  box.hidden = !on;
+  if (!on) { zones.clear(); return; }
+  if (state.day !== lastDay()) {
+    zones.clear();
+    $("pfz-lede").textContent = "INCOIS issues its Potential Fishing Zone advisories for today. " +
+      "Press Now to pair them with the latest reconstruction.";
+    $("pfz-list").replaceChildren();
+    $("pfz-note").textContent = "";
+    $("pfz-sector").hidden = $("pfz-lang").hidden = true;
+    return;
+  }
+  $("pfz-sector").hidden = $("pfz-lang").hidden = false;
+  try {
+    const r = await api.pfz(state.day);
+    pfzPoints = r.points;
+    const b = meta.regions[state.region];
+    zones.show(pfzPoints.filter((x) => x.lon >= b.lon[0] && x.lon <= b.lon[1] &&
+                                       x.lat >= b.lat[0] && x.lat <= b.lat[1]), cube.heightOf(0));
+    const sel = $<HTMLSelectElement>("pfz-sector");
+    if (!sel.options.length) {
+      sel.replaceChildren(...r.sectors.map((x) => new Option(
+        `${x.name}${x.status === "ok" ? "" : ` (${x.status === "none" ? "cloud, no advisory" : x.status})`}`, x.sector)));
+      sel.value = state.region === "Arabian Sea" ? "SEC005" : "SEC007";
+      const lang = $<HTMLSelectElement>("pfz-lang");
+      lang.replaceChildren(...Object.entries(LANGS).map(([k, v]) => new Option(v.name, k)));
+      lang.value = SECTOR_LANG[sel.value];
+      sel.onchange = () => { lang.value = SECTOR_LANG[sel.value]; listZones(); };
+      lang.onchange = () => listZones();
+    }
+    $("pfz-lede").textContent = `${r.points.length} zones from INCOIS (fetched ${r.fetched_utc}), ` +
+      `each with how deep the warm water goes there on ${state.day}, the latest day the ` +
+      `satellites allow. INCOIS says where; Satelight says how deep.`;
+    listZones();
+  } catch (e) {
+    zones.clear();
+    $("pfz-lede").textContent = `INCOIS advisories unavailable: ${(e as Error).message}`;
+  }
+}
+
+function listZones(): void {
+  const sec = $<HTMLSelectElement>("pfz-sector").value;
+  const lang = $<HTMLSelectElement>("pfz-lang").value as Lang;
+  const rows = pfzPoints.filter((x) => x.sector === sec)
+    .map((x) => ({ x, text: sentence(x, lang, state.day) }))
+    .filter((r) => r.text).slice(0, 6);
+  $("pfz-list").replaceChildren(...rows.map(({ text }) => {
+    const d = document.createElement("div");
+    d.className = "zone";
+    const b = document.createElement("button");
+    b.textContent = "🔊";
+    b.title = "Read aloud";
+    b.onclick = () => { $("pfz-note").textContent = speak(text!, lang); };
+    const t = document.createElement("div");
+    t.textContent = text!;
+    d.append(b, t);
+    return d;
+  }));
+  if (!rows.length) $("pfz-list").replaceChildren(Object.assign(document.createElement("p"),
+    { className: "empty", textContent: "No zone in this sector today, or none Satelight can add to." }));
+  $("pfz-note").textContent = (lang === "en" ? "" : "Machine-translated; not yet checked by a native speaker. ") +
+    (sec === "SEC003" ? "Goa's language is Konkani, not here yet. " : "") +
+    "Zones: INCOIS, as published. Depths: Satelight, satellites only.";
+}
+
 // ------------------------------------------------------------------ Argo floats
 
 function drawCasts(): void {
@@ -447,6 +525,9 @@ async function drawEmbedding(): Promise<void> {
       `cells of one colour look alike to the model.`;
   } catch {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    $("emb-lede").textContent = meta.nowcast?.[state.day]
+      ? "The embedding is saved for the test block only; this nowcast day was decoded, not archived."
+      : "No embedding saved for this day.";
   }
 }
 
@@ -520,9 +601,15 @@ function setDay(day: string): void {
   const d = new Date(`${day}T00:00:00Z`);
   $("date").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "long",
                                                            year: "numeric", timeZone: "UTC" });
-  $("what").textContent = state.lens === "temperature"
+  const tier = meta.nowcast?.[day];
+  const early = meta.prefloat && day <= meta.prefloat[1];
+  $("what").innerHTML = tier ? `<span class="badge">NOWCAST</span>` +
+    `near-real-time inputs (${meta.nowcast_tiers[tier].inputs}); no reanalysis covers this day yet · `
+    : early ? `<span class="badge">BEFORE THE FLOATS</span>comparison: trained on 2010–2020, ` +
+    `and salinity before 2010 is not from a satellite · ` : "";
+  $("what").append(state.lens === "temperature"
     ? `${FIELD_WHAT[state.field]} · ${state.region}`
-    : `Top: ${LENSES[state.lens].label.toLowerCase()} · sides: ${FIELD_LABEL[state.field].toLowerCase()} · ${state.region}`;
+    : `Top: ${LENSES[state.lens].label.toLowerCase()} · sides: ${FIELD_LABEL[state.field].toLowerCase()} · ${state.region}`);
   writeHash();
 }
 
@@ -583,6 +670,7 @@ async function start(): Promise<void> {
   viewer.scene.primitives.add(castTops);
   cube = new CubeScene(viewer.scene);
   track = new Track(viewer);
+  zones = new Zones(viewer);
 
   meta = await api.meta();
   if (!meta.days.length) {
@@ -593,7 +681,8 @@ async function start(): Promise<void> {
 
   const h = readHash();
   state = {
-    day: meta.days.includes(h.day ?? "") ? h.day! : meta.days[Math.min(160, meta.days.length - 1)],
+    day: meta.days.includes(h.day ?? "") ? h.day!
+      : meta.days[Math.min(meta.days.indexOf(meta.splits.test[0]) + 160, meta.days.length - 1)],
     region: meta.regions[h.region ?? ""] ? h.region! : "Bay of Bengal",
     field: meta.fields.includes(h.field ?? "") ? h.field! : "satelight",
     axis: h.axis === "linear" ? "linear" : "stretched",
@@ -606,7 +695,16 @@ async function start(): Promise<void> {
   slider.value = String(meta.days.indexOf(state.day));
   slider.oninput = () => setDay(meta.days[+slider.value]);
   slider.onchange = () => void refreshDay();
-  $("span").textContent = `${meta.days[0]} → ${meta.days[meta.days.length - 1]} · held-out test block`;
+  const firstNow = Object.keys(meta.nowcast ?? {}).sort()[0];
+  $("span").textContent = [
+    meta.prefloat ? `${meta.prefloat[0].slice(0, 4)}–${meta.prefloat[1].slice(0, 4)} before the floats` : "",
+    `${meta.splits.test[0]} → ${meta.splits.test[1]} test block`,
+    firstNow ? `${firstNow} → ${lastDay()} nowcast` : ""].filter(Boolean).join(" · ");
+  $("now").hidden = !firstNow;
+  $("now").onclick = () => {
+    $<HTMLInputElement>("day").value = String(meta.days.length - 1);
+    void refreshDay();
+  };
   $("play").onclick = play;
 
   segmented($("regions"), Object.keys(meta.regions).map((r) => [r, r]), state.region, (r) => {
@@ -668,7 +766,8 @@ async function start(): Promise<void> {
     return c.lon >= b.lon[0] && c.lon <= b.lon[1] && c.lat >= b.lat[0] && c.lat <= b.lat[1];
   });
   // Otherwise the column at the middle of the basin, so the right dock is never empty.
-  const b = meta.regions[state.region];
+  // The whole box's middle is on land (central India): use the Bay's there.
+  const b = meta.regions[state.region === "North Indian Ocean" ? "Bay of Bengal" : state.region];
   selected = first ? { kind: "cast", cast: first }
     : { kind: "cell", lat: (b.lat[0] + b.lat[1]) / 2, lon: (b.lon[0] + b.lon[1]) / 2 };
   await drawProfile();
@@ -714,6 +813,15 @@ async function start(): Promise<void> {
     },
     diveAt: (t: number) => diveAt(t),
     endDive: () => endDive(),
+    // After a partial dive in a capture: the cube whole again and the gauge off, no fly-to.
+    endDiveQuiet: () => {
+      if (!lastCube || !lastStyle || !$("view").classList.contains("diving")) return;
+      $("view").classList.remove("diving");
+      $("gauge").hidden = true;
+      $("dark").style.opacity = "0";
+      castLines.show = castTops.show = true;
+      cube.render(lastCube.data, { ...lastCube.cut, top: 0, bottom: 1000 }, lastStyle, lastCube.height);
+    },
     setLens: (l: string) => {
       [...document.querySelectorAll<HTMLButtonElement>("#lenses button")]
         .find((b) => b.textContent === (l === "temperature" ? "Temperature" : LENSES[l as keyof typeof LENSES].label))

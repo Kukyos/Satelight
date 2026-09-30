@@ -108,6 +108,15 @@ const SHOTS = {
     const p = await open(b, { day: "2023-03-15", region: "Bay of Bengal", field: "satelight", axis: "stretched", lens: "heatwave" });
     await shoot(p, "lens-heatwave"); await p.close();
   },
+  async "nowcast-fishing"(b) {
+    const p = await open(b, { day: "2026-09-24", region: "Bay of Bengal", field: "satelight", axis: "stretched", lens: "fishing" });
+    await settle(p, 1500);
+    await shoot(p, "nowcast-fishing"); await shoot(p, "nowcast-panel", "#right"); await p.close();
+  },
+  async prefloat(b) {
+    const p = await open(b, { day: "1997-11-15", region: "North Indian Ocean", field: "satelight", axis: "stretched" });
+    await shoot(p, "prefloat"); await p.close();
+  },
   async dive(b) {
     const p = await open(b, { day: "2023-05-17", region: "Bay of Bengal", field: "satelight", axis: "stretched" });
     for (const t of [0.05, 0.3, 0.55, 0.9]) {

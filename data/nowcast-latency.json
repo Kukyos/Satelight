@@ -1,0 +1,35 @@
+{
+ "measured": "2026-09-30",
+ "sources": {
+  "sst": {
+   "dataset": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2",
+   "last_day": "2026-09-29",
+   "days_behind": 1
+  },
+  "sss": {
+   "dataset": "cmems_obs-mob_glo_phy-sss_nrt_multi_P1D",
+   "last_day": "2026-09-24",
+   "days_behind": 6
+  },
+  "ssh": {
+   "dataset": "cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D",
+   "last_day": "2026-09-30",
+   "days_behind": 0
+  },
+  "oscar": {
+   "dataset": "OSCAR_L4_OC_INTERIM_V2.0",
+   "last_day": "2026-08-31",
+   "days_behind": 30
+  },
+  "ccmp": {
+   "dataset": "CCMP_WINDS_10M6HR_L4_V3.1",
+   "last_day": "2026-08-31",
+   "days_behind": 30
+  },
+  "glorys": {
+   "dataset": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+   "last_day": "2026-06-23",
+   "days_behind": 99
+  }
+ }
+}

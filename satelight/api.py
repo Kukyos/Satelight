@@ -65,12 +65,30 @@ def seafloor() -> np.ndarray:
         return np.where(s["sea_share"].values >= config.OCEAN_FRACTION_MIN, s["deptho"].values, np.nan)
 
 
+# The nowcast (nowcast.py): days after GLORYS ends, the full tier where it reaches, else
+# the fast one. Every such day is labelled nowcast in /api/meta and on screen.
+NOWCAST_TIERS = ("full", "fast")
+
+
+def daily_path(day: str) -> tuple[Path, str | None]:
+    """The reconstruction file for a day, and its nowcast tier (None in the test block)."""
+    name = f"Satelight_thetao_{day.replace('-', '')}.nc"
+    if (DAILY_DIR / name).exists():
+        return DAILY_DIR / name, None
+    for tier in NOWCAST_TIERS:
+        if (config.OUTPUT / "nowcast" / tier / name).exists():
+            return config.OUTPUT / "nowcast" / tier / name, tier
+    if (config.OUTPUT / "prefloat" / name).exists():      # 1993-2009, prefloat.py
+        return config.OUTPUT / "prefloat" / name, None
+    return DAILY_DIR / name, None
+
+
 @lru_cache(maxsize=64)
 def field(name: str, day: str) -> np.ndarray:
     """(15, 100, 240) degrees C for one field on one day."""
     d = _day(day)
     if name == "satelight":
-        path = DAILY_DIR / f"Satelight_thetao_{str(d).replace('-', '')}.nc"
+        path, _ = daily_path(str(d))
         if not path.exists():
             raise HTTPException(404, f"no reconstruction written for {d}")
         with xr.open_dataset(path) as ds:
@@ -102,9 +120,21 @@ def _box(region: str):
 
 @app.get("/api/meta")
 def meta():
-    days = sorted(p.stem.rsplit("_", 1)[-1] for p in DAILY_DIR.glob("*.nc"))
-    days = [f"{d[:4]}-{d[4:6]}-{d[6:]}" for d in days]
-    return {"run": best_run(), "days": days, "fields": FIELDS,
+    iso = lambda stem: f"{stem[-8:-4]}-{stem[-4:-2]}-{stem[-2:]}"
+    days = sorted(iso(p.stem) for p in DAILY_DIR.glob("*.nc"))
+    nowcast = {}
+    for tier in reversed(NOWCAST_TIERS):          # full overrides fast where both exist
+        for p in (config.OUTPUT / "nowcast" / tier).glob("*.nc"):
+            nowcast[iso(p.stem)] = tier
+    from . import nowcast as nc
+    tiers = {k: {"run": v, "inputs": "all eight" if k == "full" else "SST, SSS, ADT, SLA"}
+             for k, v in nc.TIERS.items()}
+    lat = json.loads(nc.LATENCY.read_text()) if nc.LATENCY.exists() else None
+    pre = sorted(iso(p.stem) for p in (config.OUTPUT / "prefloat").glob("*.nc"))
+    days = sorted(set(days) | set(pre))
+    return {"run": best_run(), "days": sorted(set(days) | set(nowcast)), "fields": FIELDS,
+            "nowcast": nowcast, "nowcast_tiers": tiers, "latency": lat,
+            "prefloat": [pre[0], pre[-1]] if pre else None,
             "depths": config.DEPTHS.tolist(), "regions": REGIONS,
             "inputs": [{"key": k, "title": INPUT_TITLES[k], "units": INPUT_UNITS[k]}
                        for k in config.INPUTS],
@@ -133,11 +163,17 @@ def inputs(day: str):
     for k in config.INPUTS:
         from .data import SOURCE_OF
         path = cube_path(SOURCE_OF[k], int(str(d)[:4]))
+        if not path.exists() or daily_path(str(d))[1]:
+            path = cube_path(SOURCE_OF[k], int(str(d)[:4]), config.CUBE_NRT)   # nowcast days
         if not path.exists():
             continue
         with xr.open_dataset(path) as ds:
+            if np.datetime64(str(d)) not in ds["time"].values.astype("datetime64[D]"):
+                continue
             a = ds[k].sel(time=str(d)).values
             prov = json.loads(ds.attrs.get("provenance", "{}"))
+        if not np.isfinite(a).any():
+            continue   # not delivered yet for this day (a nowcast day ahead of this source)
         f = a[np.isfinite(a)]
         lo, hi = (np.percentile(f, [2, 98]) if f.size else (0, 1))
         out.append({"key": k, "title": INPUT_TITLES[k], "units": INPUT_UNITS[k],
@@ -325,6 +361,46 @@ def lens_at(day: str, lat: float, lon: float):
         except (HTTPException, FileNotFoundError):
             out[name] = None
     return {"day": day, "lat": float(config.LAT[j]), "lon": float(config.LON[i]), "values": out}
+
+
+@app.get("/api/pfz")
+def pfz(day: str):
+    """INCOIS's own Potential Fishing Zone advisories, as published today (pfz.py), each
+    point with Satelight's warm-layer depth (20 °C isotherm) and mixed layer at its cell on
+    `day`, normally the latest nowcast day. INCOIS says where; this says how deep."""
+    from . import pfz as pf
+    try:
+        adv = pf.advisories()
+    except Exception as e:  # INCOIS unreachable: said so, nothing invented
+        raise HTTPException(503, f"INCOIS advisories unreachable: {type(e).__name__}") from e
+    d = str(_day(day))
+    fish, mld = lens_map("fishing", d), lens_map("sonar", d)
+    points = []
+    for sec in adv["sectors"]:
+        for q in sec["points"]:
+            j = int(np.floor((q["lat"] - config.LAT_EDGES[0]) / config.RES))
+            i = int(np.floor((q["lon"] - config.LON_EDGES[0]) / config.RES))
+            inside = 0 <= j < config.NLAT and 0 <= i < config.NLON
+            f = float(fish[j, i]) if inside else np.nan
+            m = float(mld[j, i]) if inside else np.nan
+            # No 20 °C crossing: on the shelf the whole column is often warmer than that
+            # down to the floor, which is itself the answer; a land cell at 0.25° is not.
+            col = field("satelight", d)[:, j, i] if inside else np.full(15, np.nan)
+            ok = np.isfinite(col)
+            state = ("thermocline" if np.isfinite(f) else
+                     "outside the box" if not inside else
+                     "land at 0.25°" if not ok.any() else
+                     "warm to the sea floor" if col[ok].min() > 20.0 else "no value")
+            floor = seafloor()[j, i] if inside else np.nan
+            points.append({**q, "sector": sec["sector"], "sector_name": sec["name"],
+                           "valid_till": sec.get("valid_till"), "state": state,
+                           "d20_m": None if not np.isfinite(f) else round(f),
+                           "mld_m": None if not np.isfinite(m) else round(m),
+                           "floor_m": None if not np.isfinite(floor) else round(float(floor))})
+    return {"day": d, "fetched_utc": adv["fetched_utc"], "provenance": adv["provenance"],
+            "sectors": [{k: s.get(k) for k in ("sector", "name", "status", "valid_till", "note")}
+                        for s in adv["sectors"]],
+            "points": points}
 
 
 @app.get("/api/track")

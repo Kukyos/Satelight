@@ -88,7 +88,65 @@ function stepper(first, last) {
     await orbit(page, 0.42);
   };
 }
+function lensStepper(first, last, lensHash) {
+  const days = daysBetween(first, last);
+  let shown = -1;
+  return async (page, t) => {
+    const k = Math.min(days.length - 1, Math.floor(t * days.length));
+    if (k !== shown) { shown = k; await page.evaluate((d) => window.sl.setDay(d), days[k]); await settle(page, 300); }
+    await orbit(page, lerp(0.30, 0.55, t), -0.42, 1.8);
+  };
+}
+const NOW = "2026-09-24";
 const CLIPS = {
+  // The planet from space, painted with that day's satellite SST and lit by the real sun,
+  // turning to the Indian Ocean, then down to the Bay.
+  "globe-open": {
+    hash: BAY,
+    frame: (p, t) => {
+      const u = ease(t);
+      return orbit(p, lerp(-1.25, 0.42, u), lerp(-1.45, -0.38, u), 16 * Math.pow(1.9 / 16, u));
+    },
+  },
+  // From orbit down to the Bay: the first quarter of the Dive, then a slow turn.
+  "globe-descend": {
+    hash: BAY,
+    frame: async (p, t) => {
+      if (t < 0.7) await p.evaluate((u) => window.sl.diveAt(u), (t / 0.7) * 0.2199);
+      else { await p.evaluate(() => window.sl.endDiveQuiet && window.sl.endDiveQuiet()); await orbit(p, lerp(0.42, 0.62, (t - 0.7) / 0.3), -0.36, lerp(1.9, 1.75, (t - 0.7) / 0.3)); }
+    },
+  },
+  // The sea peeled away level by level, surface to 1,000 m.
+  "dive": { hash: BAY, frame: (p, t) => p.evaluate((u) => window.sl.diveAt(u), 0.22 + 0.78 * t) },
+  "fishing-now": {
+    hash: { ...BAY, day: NOW, lens: "fishing" },
+    frame: (p, t) => orbit(p, lerp(0.20, 0.60, ease(t)), -0.46, lerp(1.8, 1.55, ease(t))),
+  },
+  "cyclone-mocha": { hash: { ...BAY, day: "2023-05-06", lens: "cyclone" }, frame: lensStepper("2023-05-06", "2023-05-17") },
+  "cyclone-biparjoy": { hash: { ...ARAB, day: "2023-06-05", lens: "cyclone" }, frame: lensStepper("2023-06-05", "2023-06-17") },
+  "heatwave-orbit": {
+    hash: { ...BAY, day: "2023-03-15", lens: "heatwave" },
+    frame: (p, t) => orbit(p, lerp(0.15, 0.65, ease(t)), -0.5, 1.75),
+  },
+  "sonar-orbit": {
+    hash: { day: "2023-07-15", region: "North Indian Ocean", field: "satelight", axis: "stretched", lens: "sonar" },
+    frame: (p, t) => orbit(p, lerp(0.1, 0.45, ease(t)), -0.62, 1.45),
+  },
+  "now-jump": {
+    hash: { ...BAY, day: "2024-09-24" },
+    frame: (() => {
+      let done = false;
+      return async (p, t) => {
+        if (!done && t > 0.35) { done = true; await p.evaluate(() => document.getElementById("now").click()); await settle(p, 400); }
+        await orbit(p, lerp(0.35, 0.55, t));
+      };
+    })(),
+  },
+  "prefloat-orbit": {
+    hash: { day: "1997-11-15", region: "North Indian Ocean", field: "satelight", axis: "stretched" },
+    frame: (p, t) => orbit(p, lerp(0.5, 0.1, ease(t)), -0.6, 1.45),
+  },
+
   "bay-orbit": { hash: BAY, frame: (p, t) => orbit(p, lerp(0.05, 0.85, ease(t)), lerp(-0.30, -0.40, t)) },
   "fields": {
     hash: BAY,

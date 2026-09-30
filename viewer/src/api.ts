@@ -9,6 +9,11 @@ export interface Meta {
   inputs: { key: string; title: string; units: string }[];
   splits: Record<string, [string, string]>;
   zero_metre_rule: string;
+  nowcast: Record<string, "fast" | "full">;
+  prefloat: [string, string] | null;
+  nowcast_tiers: Record<string, { run: string; inputs: string }>;
+  latency: { measured: string; sources: Record<string, { dataset: string; last_day: string;
+             days_behind: number }> } | null;
 }
 
 export interface CubeResponse {
@@ -108,6 +113,9 @@ export const api = {
   lensAt: (day: string, lat: number, lon: number) =>
     get<{ day: string; lat: number; lon: number; values: Record<string, number | null> }>(
       `/api/lens/at?${q({ day, lat, lon })}`),
+  pfz: (day: string) => get<{ day: string; fetched_utc: string; points: import("./advisory").PfzPoint[];
+    sectors: { sector: string; name: string; status: string; valid_till: string | null; note?: string }[] }>(
+    `/api/pfz?${q({ day })}`),
   track: (name: string) => get<{ name: string; source: string; points: TrackPoint[] }>(
     `/api/track?${q({ name })}`),
 };

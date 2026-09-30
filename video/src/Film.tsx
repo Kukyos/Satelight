@@ -2,12 +2,15 @@
 // cards, one idea each, footage with lower thirds), new cards, the viewer's own yellow.
 import React from 'react';
 import {
-  AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, Series, interpolate, staticFile,
+  AbsoluteFill, Audio, Img, Loop, OffthreadVideo, Sequence, Series, interpolate, staticFile,
   useCurrentFrame, useVideoConfig,
 } from 'remotion';
 import script from '../script.json';
 import voice from './voice.json';
-import { counts, cyclone, depths, evidence, gaps, harnessCommand, heat, repo, rmse, s4 } from './data';
+import {
+  counts, cyclone, depths, evidence, floatsPerYear, gaps, harnessCommand, heat, hidden, latency,
+  latencyMeasured, nowcastScore, prefloatScore, quantity, repo, rmse, s4,
+} from './data';
 
 // Near-black ground, one idea per card, light type, one accent: the viewer's own yellow.
 const C = { ground: '#05080C', ink: '#F2F4F7', dim: '#8C94A1', faint: '#4A525E', accent: '#F5C542', warn: '#E8876A', navy: '#0D1B2A' };
@@ -19,6 +22,7 @@ type Scene = {
   id: string; act: string; say: string; card?: string; seconds?: number; clips?: Clip[];
   lower?: string; lowers?: string[]; quote?: string; cite?: string; lines?: string[]; lowerAt?: 'left' | 'right' | 'center'; image?: string; big?: string;
   tiles?: { title: string; clip?: string; from?: number; card?: string }[];
+  quantity?: string; units?: string; heading?: string; tier?: string;
 };
 const scenes = script.scenes as Scene[];
 
@@ -230,7 +234,8 @@ const RMSE: React.FC<{ s: Scene }> = ({ s }) => {
 // Heat potential RMSE against Argo: bars to scale, per basin.
 const Heat: React.FC<{ s: Scene }> = ({ s }) => {
   const f = useCurrentFrame();
-  const max = Math.max(...heat.map((h) => h.clim));
+  const data = s.quantity ? quantity(s.quantity) : heat;
+  const max = Math.max(...data.map((h) => Math.max(h.clim, h.ours, h.glorys)));
   const bar = (v: number, color: string, at: number, bold = false) => {
     const t = interpolate(f, [at, at + 24], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     return <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -239,9 +244,9 @@ const Heat: React.FC<{ s: Scene }> = ({ s }) => {
   };
   return (
     <Card act={s.act}>
-      <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 8 }}>Cyclone heat potential, error against Argo</div></Rise>
+      <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 8 }}>{s.heading ?? 'Cyclone heat potential, error against Argo'}</div></Rise>
       <Rise at={6}><div style={{ fontSize: 26, color: C.dim, marginBottom: 44 }}>{s.lines![0]}</div></Rise>
-      {heat.map((h, i) => (
+      {data.map((h, i) => (
         <div key={h.title} style={{ display: 'flex', alignItems: 'center', marginBottom: 34 }}>
           <div style={{ width: 280, fontSize: 30, color: C.dim }}>{h.title}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -251,7 +256,7 @@ const Heat: React.FC<{ s: Scene }> = ({ s }) => {
       ))}
       <Rise at={80}><div style={{ fontSize: 22, color: C.dim, marginTop: 10, display: 'flex', gap: 40 }}>
         <span><span style={{ color: C.faint }}>■</span> climatology</span><span><span style={{ color: C.accent }}>■</span> Satelight</span>
-        <span><span style={{ color: C.warn }}>■</span> GLORYS</span><span style={{ color: C.faint }}>RMSE, kJ/cm²</span></div></Rise>
+        <span><span style={{ color: C.warn }}>■</span> GLORYS</span><span style={{ color: C.faint }}>RMSE, {s.units ?? 'kJ/cm²'}</span></div></Rise>
     </Card>
   );
 };
@@ -281,6 +286,103 @@ const Figure: React.FC<{ s: Scene }> = ({ s }) => {
   );
 };
 
+// Argo profiles per year in the box: the years the floats missed.
+const Floats: React.FC<{ s: Scene }> = ({ s }) => {
+  const f = useCurrentFrame();
+  const max = Math.max(...floatsPerYear.map((x) => x.n));
+  const p = prefloatScore;
+  return (
+    <Card act={s.act}>
+      <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 40 }}>Argo profiles per year in the box</div></Rise>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, height: 360 }}>
+        {floatsPerYear.map((x, i) => {
+          const t = interpolate(f, [12 + i * 3, 30 + i * 3], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+          return (
+            <div key={x.y} style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 17, color: x.n ? C.dim : C.accent, marginBottom: 6, opacity: t }}>{x.n.toLocaleString('en-US')}</div>
+              <div style={{ height: Math.max(3, (x.n / max) * 300 * t), background: x.n ? C.dim : C.accent, borderRadius: 2 }} />
+              <div style={{ fontSize: 17, color: C.faint, marginTop: 8 }}>{String(x.y).slice(2)}</div>
+            </div>
+          );
+        })}
+      </div>
+      <Rise at={90}><div style={{ fontSize: 28, color: C.ink, marginTop: 44 }}>
+        Scored {p.scored[0].slice(0, 4)}–{p.scored[1].slice(0, 4)} against {p.casts} casts, RMSE °C (climatology · Satelight · GLORYS):{' '}
+        {p.rows.map((r) => `${r.d} m ${r.clim.toFixed(2)} · ${r.ours.toFixed(2)} · ${r.glorys.toFixed(2)}`).join('   ')}</div></Rise>
+      <Rise at={110}><div style={{ fontSize: 24, color: C.dim, marginTop: 18 }}>{s.lines![0]}</div></Rise>
+    </Card>
+  );
+};
+
+// How late each input is against GLORYS, and the nowcast's score on real-time floats.
+const Latency: React.FC<{ s: Scene }> = ({ s }) => {
+  const f = useCurrentFrame();
+  const max = Math.max(...latency.map((x) => x.days));
+  const sc = nowcastScore(s.tier ?? 'fast');
+  return (
+    <Card act={s.act}>
+      <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 36 }}>Days behind, measured {latencyMeasured}</div></Rise>
+      {latency.map((x, i) => {
+        const t = interpolate(f, [12 + i * 8, 36 + i * 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+        return (
+          <div key={x.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ width: 380, fontSize: 28, color: x.model ? C.warn : C.dim }}>{x.name}</div>
+            <div style={{ height: 26, width: Math.max(4, (x.days / max) * 900 * t), background: x.model ? C.warn : C.accent, borderRadius: 2 }} />
+            <span style={{ fontSize: 26, marginLeft: 16, opacity: t, color: x.model ? C.warn : C.ink }}>{x.days} {x.days === 1 ? 'day' : 'days'}</span>
+          </div>
+        );
+      })}
+      <Rise at={100}><div style={{ fontSize: 28, color: C.ink, marginTop: 30 }}>
+        Nowcast {sc.days[0]} → {sc.days[1]}, against {sc.casts} real-time Argo casts, RMSE °C (climatology · Satelight):{' '}
+        {sc.rows.map((r) => `${r.d} m ${r.clim.toFixed(2)} · ${r.ours.toFixed(2)}`).join('   ')}</div></Rise>
+      <Rise at={120}><div style={{ fontSize: 24, color: C.dim, marginTop: 18 }}>{s.lines![0]}</div></Rise>
+    </Card>
+  );
+};
+
+const Hidden: React.FC<{ s: Scene }> = ({ s }) => (
+  <Tiles s={s} items={hidden} foot={<Rise at={60}><div style={{ fontSize: 24, color: C.dim, marginTop: 56 }}>{s.lines![0]}</div></Rise>} />
+);
+
+// What is coming: every chapter as a looping thumbnail, lit as the narration names it.
+// Copied from SIH26P3 video/src/Film.tsx (Index).
+const sceneById = (id: string) => scenes.find((x) => x.card === id || x.id === id)!;
+const Index: React.FC<{ s: Scene }> = ({ s }) => {
+  const f = useCurrentFrame();
+  const tiles = s.tiles!;
+  const W = 500, H = Math.round(W * 9 / 16);
+  const each = (frames(s) - 30) / tiles.length;
+  return (
+    <AbsoluteFill style={{ background: C.ground, fontFamily: FONT, alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${W}px)`, gap: '22px 40px' }}>
+        {tiles.map((t, i) => {
+          const lit = f >= 15 + i * each && f < 15 + (i + 1) * each;
+          const tIn = interpolate(f, [i * 4, i * 4 + 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+          return (
+            <div key={t.title} style={{ opacity: tIn * (lit ? 1 : 0.55), transform: `scale(${lit ? 1.03 : 1})` }}>
+              <div style={{ width: W, height: H, overflow: 'hidden', position: 'relative', background: '#0B1017',
+                outline: `2px solid ${lit ? C.accent : 'transparent'}` }}>
+                {t.clip ? (
+                  <Loop durationInFrames={60}>
+                    <OffthreadVideo src={staticFile(`clips/${t.clip}.mp4`)} startFrom={Math.round((t.from ?? 0) * FPS)} muted
+                      style={{ width: W, height: H, objectFit: 'cover' }} />
+                  </Loop>
+                ) : (
+                  <div style={{ width: 1920, height: 1080, transform: `scale(${W / 1920})`, transformOrigin: 'top left' }}>
+                    {React.createElement(CARDS[t.card!], { s: sceneById(t.card!) })}
+                  </div>
+                )}
+              </div>
+              <div style={{ color: lit ? C.ink : C.dim, fontSize: 24, marginTop: 10, fontWeight: lit ? 500 : 400 }}>
+                <span style={{ color: C.accent, marginRight: 10 }}>{i + 1}</span>{t.title}</div>
+            </div>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const End: React.FC = () => (
   <Card>
     <Rise><div style={{ display: 'flex', alignItems: 'center', gap: 36 }}><Mark size={120} />
@@ -295,6 +397,7 @@ const End: React.FC = () => (
 const CARDS: Record<string, React.FC<{ s: Scene }>> = {
   title: Title, quote: Quote, counts: Counts, gap: Gap, evidence: Evidence, rows: Rows,
   pipeline: Pipeline, rmse: RMSE, heat: Heat, figure: Figure, end: End,
+  floats: Floats, latency: Latency, hidden: Hidden, index: Index,
 };
 
 // ------------------------------------------------------------------ the film
