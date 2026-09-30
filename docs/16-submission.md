@@ -9,8 +9,8 @@ stated on the slide (S4, `11-deferred.md` D-09).
 start.bat                                       # API and viewer on :8026
 node submission/capture.cjs                     # viewer screenshots -> submission/figures/shot-*.png
 .venv/Scripts/python submission/figures.py      # RMSE chart, logo, crops -> submission/figures/deck-*
-python submission/build.py                      # -> submission/final/OceanEmbed-SIH2026.pptx
-powershell -ExecutionPolicy Bypass -File submission/topdf.ps1   # -> OceanEmbed-SIH2026.pdf
+python submission/build.py                      # -> submission/final/Satelight-SIH2026.pptx
+powershell -ExecutionPolicy Bypass -File submission/topdf.ps1   # -> Satelight-SIH2026.pdf
 ```
 
 `build.py` needs `python-pptx` and `lxml` (system Python here; not project dependencies).

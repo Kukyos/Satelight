@@ -8,10 +8,10 @@ was read from, the regrid stencil, every unit or CF normalisation that had to be
 dies is resumed by running it again. Copernicus reads also go through arco.py's chunk
 cache, so a half-finished year does not re-download what it already had.
 
-    python -m oceanembed.fetch glorys 2015        # one source, one year
-    python -m oceanembed.fetch all                # every source, every year of the window
-    python -m oceanembed.fetch static
-    python -m oceanembed.fetch all extended       # 1993-2009, for the D-07 comparison
+    python -m satelight.fetch glorys 2015        # one source, one year
+    python -m satelight.fetch all                # every source, every year of the window
+    python -m satelight.fetch static
+    python -m satelight.fetch all extended       # 1993-2009, for the D-07 comparison
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ linear        one ridge regression per cell, from that cell's eight satellite ch
               and the day of year to its 15 depths. Knows today, but only through a
               straight line at one point.
 
-    python -m oceanembed.baselines          # fit both, write runs/climatology, runs/linear
+    python -m satelight.baselines          # fit both, write runs/climatology, runs/linear
 """
 
 from __future__ import annotations

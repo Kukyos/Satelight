@@ -17,7 +17,7 @@
   },
   "speak": {
     "_": "How a word is said, where the screen keeps the spelling.",
-    "OceanEmbed": "Ocean Embed",
+    "Satelight": "Sat-light",
     "GLORYS": "Glorys",
     "RMSE": "R M S E",
     "INCOIS": "in-coys",
@@ -40,9 +40,9 @@
     {
       "id": "title",
       "card": "title",
-      "seconds": 5.5,
+      "seconds": 5,
       "minSeconds": 5,
-      "say": "OceanEmbed. The ocean below, seen from space."
+      "say": "Satelight. The ocean below, seen from space."
     },
     {
       "id": "brief",
@@ -145,9 +145,9 @@
       "id": "rmse",
       "card": "rmse",
       "act": "What the floats say",
-      "seconds": 22,
+      "seconds": 22.5,
       "minSeconds": 18,
-      "say": "Scored against those floats, depth by depth, OceanEmbed beats climatology from the surface to 300 metres, in the Bay and in the Arabian Sea, and stays behind GLORYS, which had already assimilated these floats. The thermocline, 75 to 150 metres, is the hard part: the error peaks there, and it runs warm."
+      "say": "Scored against those floats, depth by depth, Satelight beats climatology from the surface to 300 metres, in the Bay and in the Arabian Sea, and stays behind GLORYS, which had already assimilated these floats. The thermocline, 75 to 150 metres, is the hard part: the error peaks there, and it runs warm."
     },
     {
       "id": "gap",
@@ -156,7 +156,7 @@
       "seconds": 11.5,
       "minSeconds": 10,
       "lines": [
-        "(RMSE climatology − RMSE OceanEmbed) / (RMSE climatology − RMSE GLORYS), per depth and basin"
+        "(RMSE climatology − RMSE Satelight) / (RMSE climatology − RMSE GLORYS), per depth and basin"
       ],
       "say": "Put another way: at the surface it closes 75 percent of the gap between climatology and GLORYS. In the Bay of Bengal, at 75 metres, 90 percent."
     },
@@ -164,12 +164,12 @@
       "id": "heat",
       "card": "heat",
       "act": "What a cyclone feeds on",
-      "seconds": 23.5,
+      "seconds": 23,
       "minSeconds": 14,
       "lines": [
         "Tropical cyclone heat potential: the heat above 26 °C, from each profile's 15 levels"
       ],
-      "say": "A cyclone forecaster reads heat, not degrees. Tropical cyclone heat potential is the heat stored above 26 degrees. Against the floats, climatology misses it by 21.0 kJ/cm². OceanEmbed misses by 12.9, and GLORYS by 11.9. In the Bay of Bengal, OceanEmbed and GLORYS are level."
+      "say": "A cyclone forecaster reads heat, not degrees. Tropical cyclone heat potential is the heat stored above 26 degrees. Against the floats, climatology misses it by 21.0 kJ/cm². Satelight misses by 12.9, and GLORYS by 11.9. In the Bay of Bengal, Satelight and GLORYS are level."
     },
     {
       "id": "mocha",
@@ -301,7 +301,7 @@
       "card": "end",
       "seconds": 7,
       "minSeconds": 7,
-      "say": "OceanEmbed. The code, the documents, and every number are in the repository."
+      "say": "Satelight. The code, the documents, and every number are in the repository."
     }
   ]
 }

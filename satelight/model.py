@@ -99,7 +99,7 @@ class Hybrid(nn.Module):
         return self.head(y), z
 
 
-class OceanEmbed(nn.Module):
+class Satelight(nn.Module):
     def __init__(self, cin: int, arch: str = "unet", emb: int = 32, levels: int = 15,
                  width: int = 32, dropout: float = 0.0):
         super().__init__()
@@ -135,7 +135,7 @@ def masked_mse(pred, target):
 
 def demo() -> None:
     for arch in ("unet", "hybrid"):
-        m = OceanEmbed(14, arch)
+        m = Satelight(14, arch)
         x = torch.randn(2, 14, 100, 240)
         e, g = m.embed(x)
         y = m(x)

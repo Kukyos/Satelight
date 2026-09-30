@@ -8,10 +8,10 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from oceanembed import config
-from oceanembed.predict import DAILY_DIR, level_mask
+from satelight import config
+from satelight.predict import DAILY_DIR, level_mask
 
-FILES = sorted(DAILY_DIR.glob("OceanEmbed_thetao_*.nc"))
+FILES = sorted(DAILY_DIR.glob("Satelight_thetao_*.nc"))
 
 
 @pytest.mark.skipif(not FILES, reason="no output written yet")

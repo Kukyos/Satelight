@@ -55,7 +55,7 @@ def rmse_chart() -> None:
     for ax, (key, title) in zip(axs, regions):
         t = E["argo"][key]
         for name, lab, col, ls, lw in (("climatology", "Climatology (floor)", "#8C97A6", (0, (3, 3)), 1.8),
-                                       (HEAD, "OceanEmbed (satellites only)", NAVY, "-", 2.8),
+                                       (HEAD, "Satelight (satellites only)", NAVY, "-", 2.8),
                                        ("GLORYS (ceiling)", "GLORYS (ceiling, saw these floats)", WARM, "-", 1.6)):
             ax.plot([s["rmse"] for s in t[name]], y, ls=ls, lw=lw, color=col, label=lab, marker="o", ms=3)
         n = sum(s["n"] for s in t["climatology"])

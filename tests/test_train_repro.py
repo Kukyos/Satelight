@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from oceanembed import config, train
+from satelight import config, train
 
 CONFIG = """name = "repro-{arch}"
 arch = "{arch}"

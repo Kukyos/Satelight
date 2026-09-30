@@ -1,4 +1,4 @@
-# SIH 2026 · PS 26066 — OceanEmbed
+# SIH 2026 · PS 26066 — Satelight
 
 INCOIS / Ministry of Earth Sciences. Category: Software. Theme: Disaster Management.
 

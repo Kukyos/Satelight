@@ -25,8 +25,8 @@ conversion and the salinity it used are in each cast's notes. **Oxygen** arrives
 umol/kg and the model's is mmol/m3; it is converted with the in-situ density from the
 float's own temperature and salinity, and recorded the same way.
 
-    python -m oceanembed.argo            # self-check, no network
-    python -m oceanembed.argo --live     # one real query
+    python -m satelight.argo            # self-check, no network
+    python -m satelight.argo --live     # one real query
 """
 
 from __future__ import annotations

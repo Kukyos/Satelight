@@ -3,7 +3,7 @@
 #     powershell -ExecutionPolicy Bypass -File submission/topdf.ps1
 #
 # New-Object -ComObject attaches to a running PowerPoint, so it quits only an instance it started.
-param([string]$name = 'OceanEmbed-SIH2026')   # -name <other> when the deck is open elsewhere
+param([string]$name = 'Satelight-SIH2026')   # -name <other> when the deck is open elsewhere
 $final = Join-Path $PSScriptRoot 'final'
 $src = Join-Path $final "$name.pptx"
 $wasRunning = [bool](Get-Process POWERPNT -ErrorAction SilentlyContinue)

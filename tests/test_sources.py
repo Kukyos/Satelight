@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from oceanembed import arco, config, fetch
+from satelight import arco, config, fetch
 
 DAY = np.datetime64("2015-06-15")
 BOX = dict(latitude=slice(5.0, 30.0), longitude=slice(45.0, 105.0))

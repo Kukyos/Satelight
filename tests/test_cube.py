@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from oceanembed import config
+from satelight import config
 
 FILES = sorted(p for p in config.CUBE.glob("*/*.nc") if ".part" not in p.name)
 

@@ -1,7 +1,7 @@
 """The PoC server: everything the viewer draws comes from here, and only from files the
 pipeline and the harness wrote.
 
-    uvicorn oceanembed.api:app --port 8026      (start.bat / start.sh do this)
+    uvicorn satelight.api:app --port 8026      (start.bat / start.sh do this)
 
 Arrays travel as base64 little-endian float32 (or uint8 RGB), row-major, south first,
 west first; NaN means no water (land, or below the sea floor).
@@ -24,9 +24,9 @@ from . import config
 from .fetch import cube_path
 from .predict import DAILY_DIR, EMB_DIR
 
-app = FastAPI(title="OceanEmbed")
+app = FastAPI(title="Satelight")
 VIEWER = config.ROOT / "viewer" / "dist"
-FIELDS = ["oceanembed", "glorys", "climatology", "error"]
+FIELDS = ["satelight", "glorys", "climatology", "error"]
 INPUT_UNITS = {"sst": "°C", "sss": "PSU", "adt": "m", "sla": "m", "uc": "m/s", "vc": "m/s",
                "uw": "m/s", "vw": "m/s"}
 INPUT_TITLES = {"sst": "Sea surface temperature", "sss": "Sea surface salinity",
@@ -69,8 +69,8 @@ def seafloor() -> np.ndarray:
 def field(name: str, day: str) -> np.ndarray:
     """(15, 100, 240) degrees C for one field on one day."""
     d = _day(day)
-    if name == "oceanembed":
-        path = DAILY_DIR / f"OceanEmbed_thetao_{str(d).replace('-', '')}.nc"
+    if name == "satelight":
+        path = DAILY_DIR / f"Satelight_thetao_{str(d).replace('-', '')}.nc"
         if not path.exists():
             raise HTTPException(404, f"no reconstruction written for {d}")
         with xr.open_dataset(path) as ds:
@@ -87,7 +87,7 @@ def field(name: str, day: str) -> np.ndarray:
             raise HTTPException(404, "the climatology baseline has not been fitted")
         return climatology(np.array([d]))[0]
     if name == "error":
-        return field("oceanembed", day) - field("glorys", day)
+        return field("satelight", day) - field("glorys", day)
     raise HTTPException(400, f"unknown field {name!r}")
 
 
@@ -113,7 +113,7 @@ def meta():
 
 
 @app.get("/api/cube")
-def cube(day: str, name: str = "oceanembed", region: str = "Bay of Bengal"):
+def cube(day: str, name: str = "satelight", region: str = "Bay of Bengal"):
     j, i = _box(region)
     v = field(name, day)[:, j][:, :, i]
     finite = v[np.isfinite(v)]
@@ -123,7 +123,7 @@ def cube(day: str, name: str = "oceanembed", region: str = "Bay of Bengal"):
             "depths": config.DEPTHS.tolist(),
             "valueRange": [float(finite.min()), float(finite.max())] if finite.size else [0, 1],
             "values": b64(v), "seafloor": b64(seafloor()[j][:, i]),
-            "units": "°C" if name != "error" else "°C (OceanEmbed − GLORYS)"}
+            "units": "°C" if name != "error" else "°C (Satelight − GLORYS)"}
 
 
 @app.get("/api/inputs")
@@ -207,7 +207,7 @@ def column(day: str, lat: float, lon: float):
     j = int(np.clip(np.floor((lat - config.LAT_EDGES[0]) / config.RES), 0, config.NLAT - 1))
     i = int(np.clip(np.floor((lon - config.LON_EDGES[0]) / config.RES), 0, config.NLON - 1))
     out = {}
-    for name in ("oceanembed", "glorys", "climatology"):
+    for name in ("satelight", "glorys", "climatology"):
         try:
             v = field(name, day)[:, j, i]
             out[name] = [None if not np.isfinite(x) else round(float(x), 3) for x in v]

@@ -31,8 +31,8 @@ Uses the toolbox's own S3 store (`CustomS3StoreZarrV3`) rather than fsspec, beca
 toolbox is already a dependency and fsspec's HTTP backend would add aiohttp. That class is
 internal to copernicusmarine 2.4.1, which is pinned exactly in requirements.txt.
 
-    python -m oceanembed.arco          # self-check, no network
-    python -m oceanembed.arco --probe  # open one store and time one read
+    python -m satelight.arco          # self-check, no network
+    python -m satelight.arco --probe  # open one store and time one read
 """
 
 from __future__ import annotations
@@ -220,7 +220,7 @@ def open_store(dataset_id: str, service: str = "arco-geo-series",
                part: str | None = None, raw: bool = False) -> OpenStore:
     """Open one dataset's store for the life of the process. Thread-safe to read from.
 
-    raw=True (added in OceanEmbed) leaves packed integers packed: scale_factor,
+    raw=True (added in Satelight) leaves packed integers packed: scale_factor,
     add_offset and _FillValue stay in the attributes for the caller to apply, so a bulk
     read is not decoded to float64 on the way in."""
     import xarray as xr

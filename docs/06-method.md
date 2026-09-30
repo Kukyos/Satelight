@@ -6,7 +6,7 @@ harness. This document is the design, and each choice points to the limitation i
 
 ## 1 · Ingest onto one grid (S1, S2, S3)
 
-One `_fetch_*` path per source in `oceanembed/fetch.py`, writing
+One `_fetch_*` path per source in `satelight/fetch.py`, writing
 `data/cube/<source>/<year>.nc` on the common grid with a `provenance` attribute.
 
 | Input | Product | To the 0.25° grid | To daily |
@@ -122,9 +122,9 @@ keeps the config, the normalisation statistics and the loss curves.
 
 ## 6 · Output (E4)
 
-`python -m oceanembed.predict <run> <from> <to>` writes:
+`python -m satelight.predict <run> <from> <to>` writes:
 
-- **Temperature:** `data/output/daily/OceanEmbed_thetao_YYYYMMDD.nc`, holding
+- **Temperature:** `data/output/daily/Satelight_thetao_YYYYMMDD.nc`, holding
   `thetao(depth=15, lat=100, lon=240)` in °C (potential temperature). It carries CF
   attributes, the model config and the full provenance.
 - **Embedding:** `data/output/embedding/<run>_<year>.nc`, holding the per-cell and
@@ -132,7 +132,7 @@ keeps the config, the normalisation statistics and the loss curves.
 
 ## 7 · Validation (S7, E5, L1, L6)
 
-`python -m oceanembed.evaluate` scores every contender on the test block: climatology,
+`python -m satelight.evaluate` scores every contender on the test block: climatology,
 linear, each trained model and GLORYS.
 
 **Argo casts.** The set is every core Argo temperature cast in the box.

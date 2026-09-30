@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from oceanembed import config, fetch
+from satelight import config, fetch
 
 
 @pytest.mark.parametrize("source,year", [("sss", 2015), ("ssh", 2015)])

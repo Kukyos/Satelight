@@ -1,4 +1,4 @@
-// The OceanEmbed film. Adapted from SIH26P3 video/src/Film.tsx: the same grammar (near-black
+// The Satelight film. Adapted from SIH26P3 video/src/Film.tsx: the same grammar (near-black
 // cards, one idea each, footage with lower thirds), new cards, the viewer's own yellow.
 import React from 'react';
 import {
@@ -99,7 +99,7 @@ const Mark: React.FC<{ size: number }> = ({ size }) => (
 const Title: React.FC = () => (
   <Card>
     <Rise><div style={{ display: 'flex', alignItems: 'center', gap: 44 }}><Mark size={150} />
-      <div style={{ fontSize: 168, fontWeight: 200, letterSpacing: '-0.04em' }}>OceanEmbed</div></div></Rise>
+      <div style={{ fontSize: 168, fontWeight: 200, letterSpacing: '-0.04em' }}>Satelight</div></div></Rise>
     <Rise at={20}><div style={{ fontSize: 44, fontWeight: 300, color: C.dim, marginTop: 16 }}>The ocean below, seen from space.</div></Rise>
     <Rise at={40}><div style={{ fontSize: 22, color: C.faint, marginTop: 72, letterSpacing: '0.06em' }}>
       SIH 2026 · PS 26066 · INCOIS, Ministry of Earth Sciences · Disaster Management</div></Rise>
@@ -219,7 +219,7 @@ const RMSE: React.FC<{ s: Scene }> = ({ s }) => {
       </div>
       <Rise at={120}><div style={{ fontSize: 24, color: C.dim, marginTop: 10, display: 'flex', gap: 44 }}>
         <span>– – climatology, the floor</span>
-        <span><span style={{ color: C.accent }}>━</span> OceanEmbed, satellites only</span>
+        <span><span style={{ color: C.accent }}>━</span> Satelight, satellites only</span>
         <span><span style={{ color: C.warn }}>━</span> GLORYS, the ceiling: it assimilated these floats</span>
         <span style={{ color: C.faint }}>depth in m</span>
       </div></Rise>
@@ -250,7 +250,7 @@ const Heat: React.FC<{ s: Scene }> = ({ s }) => {
         </div>
       ))}
       <Rise at={80}><div style={{ fontSize: 22, color: C.dim, marginTop: 10, display: 'flex', gap: 40 }}>
-        <span><span style={{ color: C.faint }}>■</span> climatology</span><span><span style={{ color: C.accent }}>■</span> OceanEmbed</span>
+        <span><span style={{ color: C.faint }}>■</span> climatology</span><span><span style={{ color: C.accent }}>■</span> Satelight</span>
         <span><span style={{ color: C.warn }}>■</span> GLORYS</span><span style={{ color: C.faint }}>RMSE, kJ/cm²</span></div></Rise>
     </Card>
   );
@@ -260,8 +260,8 @@ const Heat: React.FC<{ s: Scene }> = ({ s }) => {
 const Figure: React.FC<{ s: Scene }> = ({ s }) => {
   const cy = s.big ? cyclone(s.big) : null;
   const lines = cy ? [
-    `Surface change, box mean: OceanEmbed ${cy.ours0} °C · GLORYS ${cy.glorys0} · climatology ${cy.clim0}`,
-    `Heat potential, kJ/cm²: OceanEmbed ${cy.tOurs} · GLORYS ${cy.tGlorys}`,
+    `Surface change, box mean: Satelight ${cy.ours0} °C · GLORYS ${cy.glorys0} · climatology ${cy.clim0}`,
+    `Heat potential, kJ/cm²: Satelight ${cy.tOurs} · GLORYS ${cy.tGlorys}`,
     ...(s.lines || []),
   ] : [...(s.lines || []),
     `Mixed-layer depth, never trained on, linear probe R² (${s4.run}): embedding ${s4.emb} · raw inputs ${s4.raw}`,
@@ -284,7 +284,7 @@ const Figure: React.FC<{ s: Scene }> = ({ s }) => {
 const End: React.FC = () => (
   <Card>
     <Rise><div style={{ display: 'flex', alignItems: 'center', gap: 36 }}><Mark size={120} />
-      <div style={{ fontSize: 140, fontWeight: 200, letterSpacing: '-0.04em' }}>OceanEmbed</div></div></Rise>
+      <div style={{ fontSize: 140, fontWeight: 200, letterSpacing: '-0.04em' }}>Satelight</div></div></Rise>
     <Rise at={18}><div style={{ fontSize: 48, fontWeight: 300, color: C.accent, marginTop: 24, fontFamily: 'Consolas, monospace' }}>{repo}</div></Rise>
     <Rise at={30}><div style={{ fontSize: 26, color: C.dim, marginTop: 20 }}>Idea-stage prototype · every number from <span style={{ fontFamily: 'Consolas, monospace' }}>{harnessCommand}</span></div></Rise>
     <Rise at={48}><div style={{ fontSize: 22, color: C.faint, marginTop: 72, letterSpacing: '0.06em' }}>

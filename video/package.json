@@ -1,15 +1,15 @@
 {
-  "name": "oceanembed-film",
+  "name": "satelight-film",
   "version": "1.0.0",
   "private": true,
-  "description": "The OceanEmbed film. Script and sources in docs/21-film.md.",
+  "description": "The Satelight film. Script and sources in docs/21-film.md.",
   "scripts": {
     "clips": "node capture.cjs",
     "check": "node check.mjs",
     "studio": "node check.mjs --soft && remotion studio",
     "render": "node render.mjs && npm run copies",
     "narrate": "node narrate.mjs --fit",
-    "copies": "ffmpeg -y -loglevel error -i out/oceanembed-film-raw.mp4 -c:v copy -af loudnorm=I=-16:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/oceanembed-film.mp4 && ffmpeg -y -loglevel error -i out/oceanembed-film-raw.mp4 -c:v copy -an out/oceanembed-film-no-voice.mp4"
+    "copies": "ffmpeg -y -loglevel error -i out/satelight-film-raw.mp4 -c:v copy -af loudnorm=I=-16:TP=-1.5:LRA=11 -c:a aac -b:a 192k out/satelight-film.mp4 && ffmpeg -y -loglevel error -i out/satelight-film-raw.mp4 -c:v copy -an out/satelight-film-no-voice.mp4"
   },
   "dependencies": {
     "@remotion/cli": "4.0.409",

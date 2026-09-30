@@ -1,4 +1,4 @@
-"""OceanEmbed: subsurface temperature from surface satellite observations (SIH 2026, PS 26066)."""
+"""Satelight: subsurface temperature from surface satellite observations (SIH 2026, PS 26066)."""
 
 import os
 from pathlib import Path

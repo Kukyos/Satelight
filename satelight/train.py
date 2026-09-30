@@ -1,6 +1,6 @@
 """Train one model from one config file and one seed.
 
-    python -m oceanembed.train configs/unet.toml
+    python -m satelight.train configs/unet.toml
 
 Writes runs/<name>/: the config as used, the normalisation statistics (train block only),
 the loss curves, and the checkpoint with the best validation loss. Model selection looks
@@ -21,7 +21,7 @@ import numpy as np
 import torch
 
 from . import config, data
-from .model import OceanEmbed, masked_mse
+from .model import Satelight, masked_mse
 
 
 def load_config(path: str | Path) -> dict:
@@ -95,8 +95,8 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
     return xa[:k], yn[:k], np.concatenate(ts), stats
 
 
-def build(cfg: dict) -> OceanEmbed:
-    return OceanEmbed(data.n_channels(cfg["inputs"], cfg["lags"]), cfg["arch"], cfg.get("emb", 32),
+def build(cfg: dict) -> Satelight:
+    return Satelight(data.n_channels(cfg["inputs"], cfg["lags"]), cfg["arch"], cfg.get("emb", 32),
                       width=cfg.get("width", 32), dropout=cfg.get("dropout", 0.0))
 
 

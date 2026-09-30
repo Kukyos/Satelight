@@ -37,7 +37,7 @@ const known = [];
 })(evalJson);
 // The cyclone boxes and dates, as config.CYCLONES defines them; and the harness figures the
 // cards show, copied into public/img so the render needs nothing outside video/.
-const config = readFileSync(join(here, '..', 'oceanembed', 'config.py'), 'utf8');
+const config = readFileSync(join(here, '..', 'satelight', 'config.py'), 'utf8');
 const cyc = config.slice(config.indexOf('CYCLONES = {'), config.indexOf('# ----', config.indexOf('CYCLONES = {')));
 for (const m of cyc.matchAll(/\d+(?:\.\d+)?/g)) known.push(Number(m[0]));
 mkdirSync(join(here, 'public', 'img'), { recursive: true });

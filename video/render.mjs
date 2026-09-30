@@ -1,7 +1,7 @@
 // The render in segments, so a browser crash costs one segment, not the film.
 //
 //   node render.mjs        check, video in 1,500-frame segments (kept between runs),
-//                          audio once, then joined into out/oceanembed-film-raw.mp4
+//                          audio once, then joined into out/satelight-film-raw.mp4
 //
 // A segment that exists is not rendered again; delete out/seg to start over.
 import { execFileSync } from 'node:child_process';
@@ -51,5 +51,5 @@ for (let a = 0; a < TOTAL; a += SEG) {
 }
 writeFileSync('out/seg/list.txt', parts.map((p) => `file '${basename(p)}'`).join(String.fromCharCode(10)));
 run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', 'out/seg/list.txt', '-i', 'out/seg/audio.wav',
-  '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', 'out/oceanembed-film-raw.mp4']);
-console.log('wrote out/oceanembed-film-raw.mp4');
+  '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', 'out/satelight-film-raw.mp4']);
+console.log('wrote out/satelight-film-raw.mp4');

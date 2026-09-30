@@ -9,4 +9,4 @@ MODULES = ["config", "grid", "arco", "argo", "baselines", "evaluate", "embed", "
 
 @pytest.mark.parametrize("name", MODULES)
 def test_demo(name):
-    importlib.import_module(f"oceanembed.{name}").demo()
+    importlib.import_module(f"satelight.{name}").demo()

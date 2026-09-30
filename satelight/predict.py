@@ -1,10 +1,10 @@
 """Reconstruct: satellite surface fields in, daily 3D temperature out.
 
-    python -m oceanembed.predict unet 2023-01-01 2024-12-15 [--embedding-only]
+    python -m satelight.predict unet 2023-01-01 2024-12-15 [--embedding-only]
 
 writes, per day,
 
-    data/output/daily/OceanEmbed_thetao_YYYYMMDD.nc
+    data/output/daily/Satelight_thetao_YYYYMMDD.nc
         thetao (depth: 15, lat: 100, lon: 240), degrees_C, potential temperature
 
 and, per year, the embedding artefact (docs/03-limitations.md L10)
@@ -99,11 +99,11 @@ def write_daily(run: str, y: np.ndarray, t: np.ndarray, cfg: dict) -> None:
                                             "standard_name": "latitude"}),
                 "lon": ("lon", config.LON, {"units": "degrees_east",
                                             "standard_name": "longitude"})},
-            attrs={"title": "OceanEmbed subsurface temperature reconstruction",
+            attrs={"title": "Satelight subsurface temperature reconstruction",
                    "Conventions": "CF-1.8", "institution": "SIH 2026 PS 26066",
                    "resolution": "0.25 degree, daily, 15 standard depths",
                    "provenance": prov})
-        ds.to_netcdf(DAILY_DIR / f"OceanEmbed_thetao_{str(day).replace('-', '')}.nc",
+        ds.to_netcdf(DAILY_DIR / f"Satelight_thetao_{str(day).replace('-', '')}.nc",
                      encoding={"thetao": {"zlib": True, "complevel": 4}})
 
 

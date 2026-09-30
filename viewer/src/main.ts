@@ -1,9 +1,9 @@
 /**
- * The OceanEmbed PoC: the eight satellite fields for a day, the embedding they are
+ * The Satelight PoC: the eight satellite fields for a day, the embedding they are
  * compressed into, and the 3D temperature decoded from it, standing on the globe over the
  * Bay of Bengal or the Arabian Sea with the held-out Argo floats of that week inside it.
  *
- * Everything shown comes from oceanembed/api.py, which only reads what the pipeline and
+ * Everything shown comes from satelight/api.py, which only reads what the pipeline and
  * the eval harness wrote. The URL hash carries the view, so a link opens the same scene.
  */
 
@@ -34,16 +34,16 @@ import { CubeScene } from "./cube/scene";
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const FIELD_LABEL: Record<string, string> = {
-  oceanembed: "Reconstruction", glorys: "GLORYS", error: "Error", climatology: "Climatology",
+  satelight: "Reconstruction", glorys: "GLORYS", error: "Error", climatology: "Climatology",
 };
 const FIELD_WHAT: Record<string, string> = {
-  oceanembed: "Temperature reconstructed from satellite surface fields alone",
+  satelight: "Temperature reconstructed from satellite surface fields alone",
   glorys: "GLORYS12 reanalysis, the training target, for comparison",
   error: "Reconstruction minus GLORYS",
   climatology: "Day-of-year climatology of the training years: the floor",
 };
 const COLORS: Record<string, string> = {
-  oceanembed: "#E4ECF2", unet: "#E4ECF2", hybrid: "#8FD3C8",
+  satelight: "#E4ECF2", unet: "#E4ECF2", hybrid: "#8FD3C8",
   "unet-no-currents-winds": "#A99BE0", linear: "#8CA0B3", climatology: "#5F7488",
   "GLORYS (ceiling)": "#E8876A", glorys: "#E8876A", argo: "#F5C542",
 };
@@ -302,8 +302,8 @@ async function drawProfile(): Promise<void> {
     $("where").textContent = `${col.lat.toFixed(3)}°N ${col.lon.toFixed(3)}°E on ${col.day}` +
       (col.seafloor ? ` · sea floor ${Math.round(col.seafloor).toLocaleString()} m` : "");
     series = Object.entries(col.profiles).map(([k, v]) => ({
-      name: FIELD_LABEL[k] ?? k, color: color(k === "oceanembed" ? meta.run : k), values: v,
-      dash: k === "climatology" ? "2 4" : undefined, width: k === "oceanembed" ? 2.4 : 1.4,
+      name: FIELD_LABEL[k] ?? k, color: color(k === "satelight" ? meta.run : k), values: v,
+      dash: k === "climatology" ? "2 4" : undefined, width: k === "satelight" ? 2.4 : 1.4,
     }));
     $("profile-prov").textContent = meta.zero_metre_rule;
   }
@@ -400,7 +400,7 @@ async function start(): Promise<void> {
 
   meta = await api.meta();
   if (!meta.days.length) {
-    notice("No reconstruction has been written yet. Run python -m oceanembed.predict first.");
+    notice("No reconstruction has been written yet. Run python -m satelight.predict first.");
     return;
   }
   try { evaluation = await api.evaluation(); } catch { evaluation = undefined; }
@@ -409,7 +409,7 @@ async function start(): Promise<void> {
   state = {
     day: meta.days.includes(h.day ?? "") ? h.day! : meta.days[Math.min(160, meta.days.length - 1)],
     region: meta.regions[h.region ?? ""] ? h.region! : "Bay of Bengal",
-    field: meta.fields.includes(h.field ?? "") ? h.field! : "oceanembed",
+    field: meta.fields.includes(h.field ?? "") ? h.field! : "satelight",
     axis: h.axis === "linear" ? "linear" : "stretched",
   };
 
@@ -472,7 +472,7 @@ async function start(): Promise<void> {
   await drawProfile();
   // A handle for the deck and film capture scripts (submission/capture.cjs, video/capture.cjs):
   // they drive the camera frame by frame and pick a float without a mouse.
-  Object.assign(window, { oe: {
+  Object.assign(window, { sl: {
     viewer, cube, meta, state: () => state, casts: () => casts,
     ready: true,
     pickCast: async (i: number) => { selected = { kind: "cast", cast: casts[i] }; await drawProfile(); },

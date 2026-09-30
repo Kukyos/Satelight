@@ -1,4 +1,4 @@
-/** Talking to oceanembed/api.py. Arrays arrive as base64 little-endian float32 or uint8. */
+/** Talking to satelight/api.py. Arrays arrive as base64 little-endian float32 or uint8. */
 
 export interface Meta {
   run: string;

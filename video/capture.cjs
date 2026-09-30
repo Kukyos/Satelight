@@ -27,7 +27,7 @@ const ease = (t) => t * t * (3 - 2 * t);
 async function settle(page, quiet = 900, max = 90000) {
   const t0 = Date.now();
   while (Date.now() - t0 < max) {
-    const idle = await page.evaluate((q) => window.oe?.ready && performance.now() - (window.__lastNet || 0) > q
+    const idle = await page.evaluate((q) => window.sl?.ready && performance.now() - (window.__lastNet || 0) > q
       && (window.__inflight || 0) === 0, quiet);
     if (idle) return;
     await sleep(150);
@@ -52,19 +52,19 @@ async function open(browser, hash) {
   return page;
 }
 
-const orbit = (page, h, p = -0.36, r = 1.9) => page.evaluate((h, p, r) => window.oe.orbit(h, p, r), h, p, r);
+const orbit = (page, h, p = -0.36, r = 1.9) => page.evaluate((h, p, r) => window.sl.orbit(h, p, r), h, p, r);
 const clickIn = (page, host, label) => page.evaluate((host, label) => {
   [...document.querySelectorAll(`#${host} button`)].find((b) => b.textContent === label).click();
 }, host, label);
 const pickFull = (page) => page.evaluate(async () => {
-  const s = window.oe.state(), b = window.oe.meta.regions[s.region];
+  const s = window.sl.state(), b = window.sl.meta.regions[s.region];
   let best = -1, n = -1;
-  window.oe.casts().forEach((c, i) => {
+  window.sl.casts().forEach((c, i) => {
     if (c.lon < b.lon[0] || c.lon > b.lon[1] || c.lat < b.lat[0] || c.lat > b.lat[1]) return;
     const k = c.obs.filter((v) => v != null).length;
     if (k > n) { n = k; best = i; }
   });
-  if (best >= 0) await window.oe.pickCast(best);
+  if (best >= 0) await window.sl.pickCast(best);
 });
 const daysBetween = (a, b) => {
   const out = [];
@@ -74,14 +74,14 @@ const daysBetween = (a, b) => {
 };
 
 // Each clip: the page it opens on, and what happens at frame f of n (t = f / n).
-const BAY = { day: "2023-05-17", region: "Bay of Bengal", field: "oceanembed", axis: "stretched" };
-const ARAB = { day: "2023-06-18", region: "Arabian Sea", field: "oceanembed", axis: "stretched" };
+const BAY = { day: "2023-05-17", region: "Bay of Bengal", field: "satelight", axis: "stretched" };
+const ARAB = { day: "2023-06-18", region: "Arabian Sea", field: "satelight", axis: "stretched" };
 function stepper(first, last) {
   const days = daysBetween(first, last);
   let shown = -1;
   return async (page, t) => {
     const k = Math.min(days.length - 1, Math.floor(t * days.length));
-    if (k !== shown) { shown = k; await page.evaluate((d) => window.oe.setDay(d), days[k]); await settle(page, 300); }
+    if (k !== shown) { shown = k; await page.evaluate((d) => window.sl.setDay(d), days[k]); await settle(page, 300); }
     await orbit(page, 0.42);
   };
 }
@@ -117,7 +117,7 @@ const CLIPS = {
     frame: (p, t) => orbit(p, lerp(0.15, 0.75, ease(t)), -0.38),
   },
   "whole-orbit": {
-    hash: { day: "2023-07-15", region: "North Indian Ocean", field: "oceanembed", axis: "stretched" },
+    hash: { day: "2023-07-15", region: "North Indian Ocean", field: "satelight", axis: "stretched" },
     frame: (p, t) => orbit(p, lerp(0.1, 0.5, ease(t)), -0.62, 1.45),
   },
   "linear-depth": {
@@ -143,7 +143,7 @@ async function record(browser, name, seconds) {
   const t0 = Date.now();
   for (let f = 0; f < n; f++) {
     await clip.frame(page, f / n);
-    await page.evaluate(() => window.oe.viewer.scene.render());
+    await page.evaluate(() => window.sl.viewer.scene.render());
     const buf = await page.screenshot({ type: "jpeg", quality: 94 });
     if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once("drain", r));
   }

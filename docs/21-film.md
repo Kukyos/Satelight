@@ -5,8 +5,8 @@ same grammar as PS 26067's film: near-black cards with one idea each, footage of
 viewer with lower thirds, one narrator (ElevenLabs' **Charlotte**) reading every line. The
 accent is the viewer's own yellow.
 
-It renders as two copies with the same picture and timing: `video/out/oceanembed-film.mp4`
-with the narration and `video/out/oceanembed-film-no-voice.mp4` without it.
+It renders as two copies with the same picture and timing: `video/out/satelight-film.mp4`
+with the narration and `video/out/satelight-film-no-voice.mp4` without it.
 
 The script to read, with timecodes, is **`21-film-script.md`**, generated from
 `video/script.json` by `node video/check.mjs`, so it cannot drift from the cut.
@@ -20,7 +20,7 @@ The script to read, with timecodes, is **`21-film-script.md`**, generated from
   boxes in `config.CYCLONES`). The cards draw their numbers from the JSON
   (`video/src/data.ts`) and never type them.
 - **Scores only beside the floor and the ceiling.** The RMSE card draws climatology,
-  GLORYS and OceanEmbed per depth, for the whole box and each basin; the heat-potential
+  GLORYS and Satelight per depth, for the whole box and each basin; the heat-potential
   card does the same per basin.
 - **Floats appear with their QC.** The float scene shows the panel's quality flag, data
   mode and source file; the next card gives the rejected-level count.
@@ -46,7 +46,7 @@ npm run render                   # check, render in segments (render.mjs), then 
 ```
 
 `capture.cjs` opens the viewer headless at 1920 × 1080, sets the camera for each frame
-through the viewer's capture handle (`window.oe.orbit`), renders the scene once and
+through the viewer's capture handle (`window.sl.orbit`), renders the scene once and
 photographs it, piping frames into ffmpeg (30 fps, H.264 CRF 16). Day steps and field
 switches wait for their data on the real clock between frames, so a load is shorter in the
 film than it was. Clip lengths come from `script.json`, and `check.mjs` fails if a clip
@@ -62,7 +62,7 @@ inside the render tabs and timed the render out, so the font is not awaited that
 
 `narrate.mjs` needs `ELEVENLABS_API_KEY` in `.env` (never committed). A line re-renders
 only when its text or the voice changes; the mp3s in `public/voice/` are committed, so a
-render needs no credits. `speak` in `script.json` holds how a word is said (OceanEmbed,
+render needs no credits. `speak` in `script.json` holds how a word is said (Satelight,
 GLORYS, INCOIS, kJ/cm²).
 
 ## The cut

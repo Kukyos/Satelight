@@ -85,5 +85,5 @@ export const evidence = [
   { value: s4.emb, label: `mixed-layer probe R² on the embedding (raw inputs ${s4.raw})` },
 ];
 
-export const harnessCommand = 'python -m oceanembed.evaluate';
-export const repo = 'github.com/Kukyos/Sattelight';
+export const harnessCommand = 'python -m satelight.evaluate';
+export const repo = 'github.com/Kukyos/Satelight';

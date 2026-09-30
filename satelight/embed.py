@@ -217,7 +217,7 @@ def pictures(run: str, days: list[str]) -> list[str]:
         img[sea] = rgb
         plt.figure(figsize=(9.6, 4.4), dpi=150)
         plt.imshow(img, origin="lower", extent=[45, 105, 5, 30])
-        plt.title(f"OceanEmbed per-cell embedding, first 3 principal components as RGB — {day}")
+        plt.title(f"Satelight per-cell embedding, first 3 principal components as RGB — {day}")
         plt.xlabel("longitude (°E)")
         plt.ylabel("latitude (°N)")
         out = fig_dir / f"embedding_{run}_{day}.png"

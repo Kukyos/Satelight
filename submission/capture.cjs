@@ -17,12 +17,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function settle(page, quiet = 1500, max = 120000) {
   const t0 = Date.now();
   while (Date.now() - t0 < max) {
-    const idle = await page.evaluate((q) => window.oe?.ready && performance.now() - (window.__lastNet || 0) > q
+    const idle = await page.evaluate((q) => window.sl?.ready && performance.now() - (window.__lastNet || 0) > q
       && (window.__inflight || 0) === 0, quiet);
     if (idle) break;
     await sleep(300);
   }
-  await page.evaluate(() => window.oe.viewer.scene.requestRender());
+  await page.evaluate(() => window.sl.viewer.scene.requestRender());
   await sleep(2500);   // the fly-to takes 1.6 s
 }
 
@@ -52,23 +52,23 @@ async function shoot(page, name, sel) {
 
 // Choose a float inside the basin with the most accepted levels, so the profile is full.
 const pickFullCast = (page) => page.evaluate(async () => {
-  const s = window.oe.state(), b = window.oe.meta.regions[s.region];
+  const s = window.sl.state(), b = window.sl.meta.regions[s.region];
   let best = -1, n = -1;
-  window.oe.casts().forEach((c, i) => {
+  window.sl.casts().forEach((c, i) => {
     if (c.lon < b.lon[0] || c.lon > b.lon[1] || c.lat < b.lat[0] || c.lat > b.lat[1]) return;
     const k = c.obs.filter((v) => v != null).length;
     if (k > n) { n = k; best = i; }
   });
-  if (best >= 0) await window.oe.pickCast(best);
+  if (best >= 0) await window.sl.pickCast(best);
   return best;
 });
 
 const SHOTS = {
   async hero(b) {
-    const p = await open(b, { day: "2023-05-17", region: "Bay of Bengal", field: "oceanembed", axis: "stretched" });
+    const p = await open(b, { day: "2023-05-17", region: "Bay of Bengal", field: "satelight", axis: "stretched" });
     const i = await pickFullCast(p); await settle(p, 800);
     // The float's paperwork, for the slide caption (hard rule 2: never shown without it).
-    const cast = await p.evaluate((i) => { const c = window.oe.casts()[i];
+    const cast = await p.evaluate((i) => { const c = window.sl.casts()[i];
       return { platform: c.platform, cycle: c.cycle, day: c.day, data_mode: c.data_mode,
                levels_rejected: c.levels_rejected, source_file: c.source_file }; }, i);
     require("fs").writeFileSync(path.join(OUT, "shot-profile.json"), JSON.stringify(cast, null, 1));
@@ -77,7 +77,7 @@ const SHOTS = {
     await p.close();
   },
   async arabian(b) {
-    const p = await open(b, { day: "2023-06-18", region: "Arabian Sea", field: "oceanembed", axis: "stretched" });
+    const p = await open(b, { day: "2023-06-18", region: "Arabian Sea", field: "satelight", axis: "stretched" });
     await pickFullCast(p); await settle(p, 800);
     await shoot(p, "arabian"); await shoot(p, "arabian-view", "#view"); await p.close();
   },
@@ -88,6 +88,11 @@ const SHOTS = {
   async error(b) {
     const p = await open(b, { day: "2024-05-20", region: "Arabian Sea", field: "error", axis: "stretched" });
     await shoot(p, "error"); await shoot(p, "error-view", "#view"); await p.close();
+  },
+  // A day with no reconstruction (an input is missing): the viewer must say so, not fill it.
+  async skipped(b) {
+    const p = await open(b, { day: "2024-08-31", region: "Bay of Bengal", field: "satelight", axis: "stretched" });
+    await shoot(p, "skipped"); await p.close();
   },
 };
 

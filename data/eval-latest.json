@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-30T09:42:49",
+ "generated": "2026-09-30T14:44:35",
  "selection": {
   "rule": "lowest validation RMSE (\u00b0C, mean over the 15 depths, at the best epoch) among candidates (validation block only)",
   "headline": "hybrid",

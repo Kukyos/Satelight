@@ -2,7 +2,7 @@
 /**
  * A cube of ocean held in memory, and every way the viewer reads a value out of it.
  *
- * The server sends the field on the 15 standard depths (oceanembed/api.py), shallow first and south first, x fastest. Everything drawn — the six faces,
+ * The server sends the field on the 15 standard depths (satelight/api.py), shallow first and south first, x fastest. Everything drawn — the six faces,
  * a cut anywhere inside, the value under the cursor — is sampled here, so the rules live
  * in one place:
  *
@@ -18,7 +18,7 @@
  *     floor. The two are drawn differently, so the difference is kept: `kind()`.
  */
 
-/** What the server sends with a cube (oceanembed/api.py /api/cube). */
+/** What the server sends with a cube (satelight/api.py /api/cube). */
 export interface CubeMeta {
   dimensions: [number, number, number];
   lons: number[];

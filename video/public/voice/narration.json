@@ -4,8 +4,8 @@
     "seconds": 11.19
   },
   "title": {
-    "hash": "74eceddecb035822",
-    "seconds": 3.34
+    "hash": "fb6f562ffcb3c6b1",
+    "seconds": 3.02
   },
   "brief": {
     "hash": "df5b20fe5f0d9fdf",
@@ -40,16 +40,16 @@
     "seconds": 9.24
   },
   "rmse": {
-    "hash": "7917217a9d1813ff",
-    "seconds": 19.88
+    "hash": "d431c0dcd2673515",
+    "seconds": 20.53
   },
   "gap": {
     "hash": "5d17f2d09d93d674",
     "seconds": 9.43
   },
   "heat": {
-    "hash": "7a8e682d98ae5068",
-    "seconds": 21.69
+    "hash": "5cc494b17c51c2ec",
+    "seconds": 20.99
   },
   "mocha": {
     "hash": "1a0f7fc9608d4c5b",
@@ -92,7 +92,7 @@
     "seconds": 10.45
   },
   "end": {
-    "hash": "ebc83391177f1fa7",
-    "seconds": 5.25
+    "hash": "621c81d4c5766799",
+    "seconds": 4.74
   }
 }

@@ -1,7 +1,7 @@
 """The idea deck: PS 26067's submitted deck (72/90) with its text and pictures replaced.
 
     python submission/figures.py     # pictures first
-    python submission/build.py       # -> submission/final/OceanEmbed-SIH2026.pptx
+    python submission/build.py       # -> submission/final/Satelight-SIH2026.pptx
     powershell -ExecutionPolicy Bypass -File submission/topdf.ps1
 
 The layout, fonts, colours, masthead and footer are the P3 deck's, unchanged: its final
@@ -27,8 +27,8 @@ ROOT = HERE.parent
 BASE = HERE / "base-p3.pptx"
 P3 = Path(r"C:\Users\Cleo\Desktop\SIH26P3\submission\sih\final\VVater-SIH2026-final.pptx")
 FIG = HERE / "figures"
-OUT = HERE / "final" / "OceanEmbed-SIH2026.pptx"
-REPO = "https://github.com/Kukyos/Sattelight"
+OUT = HERE / "final" / "Satelight-SIH2026.pptx"
+REPO = "https://github.com/Kukyos/Satelight"
 
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 R_EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
@@ -107,7 +107,7 @@ S1 = {"TextBox 11": [
     "Team Name - Team Null"]}
 
 S2 = {
-    "Group 4/TextBox 6": ["OceanEmbed: Ocean from Space"],
+    "Group 4/TextBox 6": ["Satelight: Ocean from Space"],
     "TextBox 78": [["Eight satellite surface fields in, ",
                     "temperature at 15 depths to 1,000 m out, every day at 0.25°",
                     ", over the North Indian Ocean, through a learned embedding."]],
@@ -234,7 +234,7 @@ S4 = {
     "TextBox 30": ["kJ/cm² RMSE in cyclone heat potential vs Argo: climatology → ours "
                    f"(GLORYS {f1(tchp[BOX]['GLORYS (ceiling)'])})"],
     "TextBox 31": ["WHAT THE HARNESS FOUND: ERROR AGAINST HELD-OUT ARGO, BY DEPTH"],
-    "TextBox 66": [["From the surface to 300 m OceanEmbed beats climatology in both basins and "
+    "TextBox 66": [["From the surface to 300 m Satelight beats climatology in both basins and "
                     "stays behind GLORYS, which assimilated these floats. ",
                     "The thermocline (75–150 m) is the hard part",
                     ": errors peak there and run warm."]],
@@ -263,7 +263,7 @@ S4 = {
 S5 = {
     "TextBox 14": ["EACH TYPE OF USER AND THE IMPACT ON THEM"],
     "TextBox 15": ["INCOIS cyclone forecasters"],
-    "TextBox 26": ["OceanEmbed"],
+    "TextBox 26": ["Satelight"],
     "TextBox 37": ["GLORYS"],
     "TextBox 38": [f"Cyclone Mocha, {MOCHA['before']} to {MOCHA['after'][-2:]}: box-mean heat "
                    f"potential {f1(m_t['reconstruction']['before'])} → "
@@ -330,7 +330,7 @@ REFS = [  # (number, text, grey tail, link)
      "doi.org/10.3389/feart.2021.698876"),
     ("Argo Program, \"How Argo floats work\". ", "Floats.", "argo.ucsd.edu"),
     ("SIH 2026 problem statement 26066, quoted verbatim. ", "",
-     "github.com/Kukyos/Sattelight/blob/main/docs/01-problem-statement.md"),
+     "github.com/Kukyos/Satelight/blob/main/docs/01-problem-statement.md"),
 ]
 
 S6 = {

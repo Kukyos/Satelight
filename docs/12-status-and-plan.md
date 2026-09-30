@@ -8,17 +8,17 @@ they come only from the harness, in `13-eval-results.md`.
 
 | Piece | Where | Proof |
 |---|---|---|
-| Ingest of all eight inputs and the target, 2010-02-04 → 2024-12-15, on the 240 × 100 grid | `oceanembed/fetch.py`, `grid.py`, `data/cube/` | `tests/test_cube.py` (grid, daily axis, 15 depths, shelf mask, provenance on every file); `tests/test_reproduce.py --live` (a re-fetch is bit-identical); `tests/test_sources.py --live` (each input equals its source, regridded by hand, on a real day). S1–S3 and E1 are `done` |
-| Extended window 1993 → 2009, every source (D-07) | `data/cube/`, `python -m oceanembed.fetch <source> extended` | Same tests |
+| Ingest of all eight inputs and the target, 2010-02-04 → 2024-12-15, on the 240 × 100 grid | `satelight/fetch.py`, `grid.py`, `data/cube/` | `tests/test_cube.py` (grid, daily axis, 15 depths, shelf mask, provenance on every file); `tests/test_reproduce.py --live` (a re-fetch is bit-identical); `tests/test_sources.py --live` (each input equals its source, regridded by hand, on a real day). S1–S3 and E1 are `done` |
+| Extended window 1993 → 2009, every source (D-07) | `data/cube/`, `python -m satelight.fetch <source> extended` | Same tests |
 | Mixed-layer depth 2021–2024, the probe label (never an input) | `data/cube/mld/` | — |
 | Argo casts for the test block | `data/cache/argo_erddap/` | QC kept, rejected levels counted |
-| Baselines: climatology and per-cell ridge | `oceanembed/baselines.py`, `runs/climatology`, `runs/linear` | `baselines.demo()` |
-| Encoders (U-Net, CNN + transformer hybrid), decoder, training | `oceanembed/model.py`, `train.py`, `configs/` | `tests/test_train_repro.py --live`: the same config and seed give a bit-identical run for both encoders |
+| Baselines: climatology and per-cell ridge | `satelight/baselines.py`, `runs/climatology`, `runs/linear` | `baselines.demo()` |
+| Encoders (U-Net, CNN + transformer hybrid), decoder, training | `satelight/model.py`, `train.py`, `configs/` | `tests/test_train_repro.py --live`: the same config and seed give a bit-identical run for both encoders |
 | Training recipe chosen on the validation block | `configs/dev/` | Reported by the harness under "How the training recipe was chosen" |
-| Output writer (daily NetCDF), manifest of skipped days, embedding artefact | `oceanembed/predict.py`, `data/output/` | `tests/test_output.py` |
-| Harness: Argo and INCOIS gridded Argo, per depth and basin, beside climatology and GLORYS; INCOIS range test and its own agreement with Argo; validation-only model selection; embedding inspection with controls | `oceanembed/evaluate.py`, `embed.py` | `evaluate.demo()`, `embed.demo()`; the first full report is `13-eval-results.md` (2026-09-28) |
+| Output writer (daily NetCDF), manifest of skipped days, embedding artefact | `satelight/predict.py`, `data/output/` | `tests/test_output.py` |
+| Harness: Argo and INCOIS gridded Argo, per depth and basin, beside climatology and GLORYS; INCOIS range test and its own agreement with Argo; validation-only model selection; embedding inspection with controls | `satelight/evaluate.py`, `embed.py` | `evaluate.demo()`, `embed.demo()`; the first full report is `13-eval-results.md` (2026-09-28) |
 | All five runs trained; headline named on the validation block alone: **hybrid**. *2026-09-28: the rule compares mean validation RMSE in °C, not normalised loss, which is not comparable across absolute and anomaly targets; the hybrid is the headline under both* | `runs/` | Harness, "Model selection" |
-| PoC viewer and API (E6) | `viewer/`, `oceanembed/api.py`, `start.bat` / `start.sh` | Reviewed on the hybrid output over both basins, 2026-09-28; `data/figures/viewer_*.jpg` |
+| PoC viewer and API (E6) | `viewer/`, `satelight/api.py`, `start.bat` / `start.sh` | Reviewed on the hybrid output over both basins, 2026-09-28; `data/figures/viewer_*.jpg` |
 
 What the development runs showed, in words (their figures are in the harness report):
 
@@ -56,13 +56,13 @@ fails on any empty day that is not logged.
 ## Reproduce
 
 ```
-python -m oceanembed.train configs/<run>.toml        # unet, hybrid, unet-abs, hybrid-abs, unet-history,
+python -m satelight.train configs/<run>.toml        # unet, hybrid, unet-abs, hybrid-abs, unet-history,
                                                      # unet-no-currents-winds, unet-extended
-python -c "from oceanembed.evaluate import selection; print(selection()['headline'])"
-python -m oceanembed.predict hybrid 2023-01-01 2024-12-15
-python -m oceanembed.predict <S4 run> 2023-01-01 2024-12-15 --embedding-only
+python -c "from satelight.evaluate import selection; print(selection()['headline'])"
+python -m satelight.predict hybrid 2023-01-01 2024-12-15
+python -m satelight.predict <S4 run> 2023-01-01 2024-12-15 --embedding-only
                                                      # when S4 is carried by another run
-python -m oceanembed.evaluate                        # writes 13-eval-results.md
+python -m satelight.evaluate                        # writes 13-eval-results.md
 start.bat          (or ./start.sh)
 ```
 
