@@ -263,7 +263,10 @@ const Figure: React.FC<{ s: Scene }> = ({ s }) => {
     `Surface change, box mean: OceanEmbed ${cy.ours0} °C · GLORYS ${cy.glorys0} · climatology ${cy.clim0}`,
     `Heat potential, kJ/cm²: OceanEmbed ${cy.tOurs} · GLORYS ${cy.tGlorys}`,
     ...(s.lines || []),
-  ] : [...(s.lines || []), `Mixed-layer depth probe, R²: embedding ${s4.emb} · raw inputs ${s4.raw}`];
+  ] : [...(s.lines || []),
+    `Mixed-layer depth, never trained on, linear probe R² (${s4.run}): embedding ${s4.emb} · raw inputs ${s4.raw}`,
+    `Seasons, clustering NMI (${s4.head}, the headline): embedding ${s4.nmi} · day of year alone ${s4.nmiDoy}`,
+    'No single embedding does both yet: S4 is half met.'];
   return (
     <Card act={s.act}>
       <div style={{ display: 'flex', gap: 64, alignItems: 'center' }}>

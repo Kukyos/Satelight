@@ -68,6 +68,8 @@ MOCHA, BIP = E["cyclones"]["Mocha"], E["cyclones"]["Biparjoy"]
 m_t, b_t = MOCHA["tchp_box_mean"], BIP["tchp_box_mean"]
 assert m_t["reconstruction"]["after"] < m_t["reconstruction"]["before"]
 assert b_t["reconstruction"]["after"] < b_t["reconstruction"]["before"]
+# The float in the slide-2 crop, as capture.cjs picked it; its paperwork goes in the caption.
+CAST = json.loads((FIG / "shot-profile.json").read_text())
 GAP = E["gap_closed"][BOX][HEAD]
 gap0 = GAP[0]
 EMB = E["embedding"]
@@ -110,9 +112,10 @@ S2 = {
                     "temperature at 15 depths to 1,000 m out, every day at 0.25°",
                     ", over the North Indian Ocean, through a learned embedding."]],
     "TextBox 79": [["Working prototype (idea stage), captured.",
-                    " The Bay of Bengal on 2023-05-17, after Cyclone Mocha: temperature "
-                    "reconstructed from satellites alone, 0 to 1,000 m. Top right, one held-out "
-                    "Argo float against every model."]],
+                    " The Bay of Bengal on 2023-05-17, after Cyclone Mocha, reconstructed from "
+                    f"satellites alone to 1,000 m. Bottom right: held-out Argo float {CAST['platform']} "
+                    f"cycle {CAST['cycle']}, data mode {CAST['data_mode']}, {CAST['levels_rejected']} "
+                    f"levels failed QC, file {CAST['source_file'].split('/')[-1].split(' ')[0]}."]],
     "TextBox 81": [["Inputs:", " SST, salinity, sea level (SSH, SLA), currents and winds, "
                     "harmonised onto one 0.25° daily grid"]],
     "TextBox 82": [["Model:", " CNN + transformer encoder makes the embedding; a decoder "
@@ -210,7 +213,7 @@ S3 = {
     "TextBox 133": ["Open-source stack", "PyTorch, xarray, CesiumJS", "free, no licence cost"],
     "TextBox 134": ["3D data"],
     "TextBox 135": ["One command starts it: start.bat or start.sh.",
-                    "Runs on one laptop GPU"],
+                    "Runs on one 8 GB GPU"],
     "Group 79/TextBox 81": [["What the model writes for each cell and day:", "  temperature at 0, 5, 10, "
                              "20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700 and 1,000 m"]],
     "Group 64/TextBox 66": ["uses"],
@@ -262,9 +265,9 @@ S5 = {
     "TextBox 15": ["INCOIS cyclone forecasters"],
     "TextBox 26": ["OceanEmbed"],
     "TextBox 37": ["GLORYS"],
-    "TextBox 38": [f"Cyclone Mocha, {MOCHA['before']} to {MOCHA['after']}: the surface cools; "
-                   f"box-mean heat potential {f1(m_t['reconstruction']['before'])} → "
-                   f"{f1(m_t['reconstruction']['after'])} kJ/cm², from satellites alone."],
+    "TextBox 38": [f"Cyclone Mocha, {MOCHA['before']} to {MOCHA['after'][-2:]}: box-mean heat "
+                   f"potential {f1(m_t['reconstruction']['before'])} → "
+                   f"{f1(m_t['reconstruction']['after'])} kJ/cm², satellites only."],
     "TextBox 39": ["Fisheries"],
     "TextBox 50": ["Where the warm layer ends, every day at 0.25°: the thermocline depth "
                    "that pelagic fish follow, between the floats."],
@@ -275,7 +278,7 @@ S5 = {
     "TextBox 74": ["The embedding as colour: each day's ocean summarised by the model, "
                    "water that looks alike painted alike."],
     "TextBox 75": ["BENEFITS"],
-    "TextBox 81": ["Disaster preparedness: a cyclone's fuel, every day, not only where a float surfaced"],
+    "TextBox 81": ["Disaster preparedness: a cyclone's fuel, daily, between the floats"],
     "TextBox 82": ["Cyclone wakes seen below the surface from satellites alone"],
     "TextBox 83": ["Open data and code for Indian ocean science and teaching"],
     "TextBox 89": ["Uses satellites already in orbit: no new instruments to buy"],
@@ -431,7 +434,7 @@ def swap(slide, shape, image: Path) -> None:
         blip.getparent().remove(src)
 
 
-def build() -> Path:
+def build(out: Path = OUT) -> Path:
     if not BASE.exists():
         shutil.copy2(P3, BASE)
     prs = Presentation(str(BASE))
@@ -453,10 +456,12 @@ def build() -> Path:
                                      width=Emu(8947404))
         if i == 5:  # the reference numbers are P3's 1..23 already; nothing else to renumber
             pass
-    OUT.parent.mkdir(exist_ok=True)
-    prs.save(str(OUT))
-    return OUT
+    out.parent.mkdir(exist_ok=True)
+    prs.save(str(out))
+    return out
 
 
 if __name__ == "__main__":
-    print("deck:", build())
+    import sys
+    # `build.py <path>` writes elsewhere, for when the deck is open in PowerPoint.
+    print("deck:", build(Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else OUT))

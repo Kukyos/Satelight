@@ -240,13 +240,13 @@
       "id": "embedding",
       "card": "figure",
       "act": "The embedding",
-      "image": "embedding_hybrid_2023-07-15.png",
-      "seconds": 26,
+      "image": "embedding_unet-abs_2023-07-15.png",
+      "seconds": 29.5,
       "minSeconds": 16,
       "lines": [
-        "The first three components as colour, 15 July 2023: water that looks alike to the model, painted alike."
+        "unet-abs's embedding, its first three components as colour, 15 July 2023: water that looks alike to the model, painted alike."
       ],
-      "say": "And the embedding itself. It is saved every day, as a file you can open: here, its first three components as colour. One encoder's embedding predicts the mixed-layer depth, which it was never trained on, better than the raw inputs do: R squared 0.351, against 0.255. But no embedding yet beats the calendar at sorting the seasons. That proof is half met, and we say so."
+      "say": "And the embedding itself. It is saved every day, as a file you can open: here, its first three components as colour. One encoder's embedding predicts the mixed-layer depth, which it was never trained on, better than the raw inputs do: R squared 0.351, against 0.255. The headline model's embedding sorts the seasons better than the calendar alone. No single embedding does both yet. That proof is half met, and we say so."
     },
     {
       "id": "whole",
@@ -268,11 +268,11 @@
       "clips": [
         {
           "name": "arabian-orbit",
-          "seconds": 9,
+          "seconds": 9.5,
           "minSeconds": 8
         }
       ],
-      "say": "It runs on one laptop graphics card, from free public data, and every run is rebuilt from a config file and a seed."
+      "say": "It runs on one eight-gigabyte graphics card, from free public data, and every run is rebuilt from a config file and a seed."
     },
     {
       "id": "evidence",
@@ -290,7 +290,7 @@
       "minSeconds": 14,
       "lines": [
         "The embedding proof|half met: a second encoder is being trained",
-        "The thermocline|runs warm, by 0.88 °C at 100 m against the floats",
+        "The thermocline|runs warm: +0.88 °C at 100 m against the floats, where GLORYS runs +0.67",
         "INCOIS's own portal|the brief's LAS link was not found; ERDDAP stands in",
         "The years after 2024|salinity joins a near-real-time product there; the join is unchecked"
       ],

@@ -87,9 +87,8 @@ def logo() -> None:
 
 def crops() -> None:
     fit(FIG / "shot-hero-view.png", 7150608 / 3767328, (0.5, 0.56), "deck-hero.jpg")
-    prof = Image.open(FIG / "shot-profile.png")   # the chart, without the panel's header
-    fit(prof.crop((0, round(0.075 * prof.height), prof.width, prof.height)), 2034540 / 2395728,
-        (0.5, 0.0), "deck-profile.jpg")
+    # The panel from its header (float, cycle, day) down; the slide caption carries the rest.
+    fit(FIG / "shot-profile.png", 2034540 / 2395728, (0.5, 0.0), "deck-profile.jpg")
     # The cyclone figure's map panels, without its axes: top row is 0 m.
     cy = Image.open(HARNESS_FIG / "cyclone_mocha.png")
     w, h = cy.size

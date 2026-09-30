@@ -66,8 +66,13 @@ const pickFullCast = (page) => page.evaluate(async () => {
 const SHOTS = {
   async hero(b) {
     const p = await open(b, { day: "2023-05-17", region: "Bay of Bengal", field: "oceanembed", axis: "stretched" });
-    await pickFullCast(p); await settle(p, 800);
-    await shoot(p); await shoot(p, "hero-view", "#view"); await shoot(p, "profile", "#right");
+    const i = await pickFullCast(p); await settle(p, 800);
+    // The float's paperwork, for the slide caption (hard rule 2: never shown without it).
+    const cast = await p.evaluate((i) => { const c = window.oe.casts()[i];
+      return { platform: c.platform, cycle: c.cycle, day: c.day, data_mode: c.data_mode,
+               levels_rejected: c.levels_rejected, source_file: c.source_file }; }, i);
+    require("fs").writeFileSync(path.join(OUT, "shot-profile.json"), JSON.stringify(cast, null, 1));
+    await shoot(p, "hero"); await shoot(p, "hero-view", "#view"); await shoot(p, "profile", "#right");
     await shoot(p, "left", "#left");
     await p.close();
   },

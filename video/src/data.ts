@@ -68,7 +68,13 @@ export const cyclone = (name: string) => {
 const probeRun = E.embedding_screen.chosen;
 const probe = E.embedding[probeRun].mld_probe!;
 const key = (p: string) => Object.keys(probe).find((k) => k.startsWith(p))!;
-export const s4 = { run: probeRun, emb: f(probe[key('embedding')].r2_test, 3), raw: f(probe[key('raw')].r2_test, 3) };
+type Seasons = { nmi_clusters_vs_season: number; day_of_year_control: { nmi_clusters_vs_season: number } };
+const headSeasons = (E.embedding[E.selection.headline] as unknown as { seasons: Seasons }).seasons;
+export const s4 = {
+  run: probeRun, emb: f(probe[key('embedding')].r2_test, 3), raw: f(probe[key('raw')].r2_test, 3),
+  head: E.selection.headline,
+  nmi: f(headSeasons.nmi_clusters_vs_season, 3), nmiDoy: f(headSeasons.day_of_year_control.nmi_clusters_vs_season, 3),
+};
 
 export const evidence = [
   { value: thousands(c.casts_used), label: 'held-out Argo casts scored' },
