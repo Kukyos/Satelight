@@ -137,6 +137,13 @@
   .prov { color: var(--dim); font-size: 11px; margin-top: 8px; word-break: break-word; }
   .empty { color: var(--dim); font-size: 12px; padding: 12px 0; }
 
+  /* Cinema: the globe full-frame, no panels (link with cinema=1; the film's wide shots). */
+  .cinema #app { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "view"; }
+  .cinema header, .cinema aside, .cinema #time, .cinema .tools, .cinema .lensbar { display: none !important; }
+  .cinema #view:not(.diving) .legend { display: none; }
+  .cinema .stamp { left: 56px; top: 44px; }
+  .cinema .stamp .date { font-size: 72px; }
+  .cinema .gauge { left: 56px; bottom: 56px; }
   @media (max-width: 1100px) {
     :root { --left: 240px; --right: 300px; }
     .stamp .date { font-size: 40px; }

@@ -29,6 +29,20 @@ export const BOX = 'North Indian Ocean (whole box)';
 export const depths = E.depths;
 export const regions: [string, string][] = [[BOX, 'Whole box'], ['Bay of Bengal', 'Bay of Bengal'], ['Arabian Sea', 'Arabian Sea']];
 
+// RMSE by depth for the headline test block, the nowcast (no GLORYS: it does not reach
+// those days), or 1993-2009, per basin.
+export const rmseFor = (source?: string) => regions.map(([key, title]) => {
+  const tab = source === 'prefloat' ? E.prefloat.argo
+    : source?.startsWith('nowcast-') ? E.nowcast.tiers[source.slice(8)].argo : E.argo;
+  const reg = tab[key];
+  const ours = source ? Object.keys(reg).find((k) => k.startsWith('nowcast') || k.includes('before the floats'))! : HEAD;
+  return {
+    title, n: thousands(reg.climatology.reduce((a, s) => a + (s.n ?? 0), 0)),
+    clim: reg.climatology.map((s) => s.rmse!), ours: reg[ours].map((s) => s.rmse!),
+    glorys: reg['GLORYS (ceiling)'] ? reg['GLORYS (ceiling)'].map((s) => s.rmse!) : null,
+  };
+});
+
 export const rmse = regions.map(([key, title]) => ({
   title,
   n: thousands(E.argo[key].climatology.reduce((a, s) => a + (s.n ?? 0), 0)),
@@ -105,7 +119,7 @@ export const hidden = (() => {
     { value: `${o.hits} of ${r.observed}`, label: 'hidden warm layers Argo found, flagged by Satelight' },
     { value: f(o.hss!, 2), label: `skill (Heidke; GLORYS ${f(g.hss!, 2)}, climatology 0)` },
     { value: `${ob.hits} of ${b.observed}`, label: `in the Bay of Bengal, skill ${f(ob.hss!, 2)}` },
-    { value: thousands(o.false_alarms), label: 'false alarms: the warm thermocline over-flags' },
+    { value: thousands(o.false_alarms), label: 'false alarms, consistent with the warm thermocline' },
   ];
 })();
 
@@ -117,26 +131,7 @@ export const latency = Object.entries(NL.sources).map(([k, v]) => ({
 }));
 export const latencyMeasured = NL.measured;
 
-// The nowcast tier against real-time Argo, beside climatology, at a few depths.
-export const nowcastScore = (tier: string) => {
-  const t = E.nowcast.tiers[tier];
-  const reg = t.argo[BOX];
-  const name = Object.keys(reg).find((k) => k.startsWith('nowcast'))!;
-  const at = (d: number) => depths.indexOf(d);
-  return { days: t.days, casts: thousands(t.casts),
-    rows: [0, 50, 100, 300].map((d) => ({ d, clim: reg.climatology[at(d)].rmse!, ours: reg[name][at(d)].rmse! })) };
-};
-
 export const floatsPerYear = Array.from({ length: 2011 - 1993 }, (_, i) => 1993 + i)
   .map((y) => ({ y, n: E.prefloat.floats.profiles_per_year[String(y)] ?? 0 }));
-export const prefloatScore = (() => {
-  const reg = E.prefloat.argo[BOX];
-  const name = Object.keys(reg).find((k) => k.includes('before the floats'))!;
-  const at = (d: number) => depths.indexOf(d);
-  return { casts: thousands(E.prefloat.casts), scored: E.prefloat.scored,
-    rows: [0, 50, 100, 300].map((d) => ({ d, clim: reg.climatology[at(d)].rmse!, ours: reg[name][at(d)].rmse!,
-                                         glorys: reg['GLORYS (ceiling)'][at(d)].rmse! })) };
-})();
-
 export const harnessCommand = 'python -m satelight.evaluate';
 export const repo = 'github.com/Kukyos/Satelight';

@@ -102,10 +102,10 @@ const CLIPS = {
   // The planet from space, painted with that day's satellite SST and lit by the real sun,
   // turning to the Indian Ocean, then down to the Bay.
   "globe-open": {
-    hash: BAY,
+    hash: { ...BAY, cinema: "1" },
     frame: (p, t) => {
       const u = ease(t);
-      return orbit(p, lerp(-1.25, 0.42, u), lerp(-1.45, -0.38, u), 16 * Math.pow(1.9 / 16, u));
+      return orbit(p, lerp(-1.25, 0.42, u), lerp(-1.45, -0.38, u), 11 * Math.pow(1.9 / 11, u));
     },
   },
   // From orbit down to the Bay: the first quarter of the Dive, then a slow turn.
@@ -117,7 +117,7 @@ const CLIPS = {
     },
   },
   // The sea peeled away level by level, surface to 1,000 m.
-  "dive": { hash: BAY, frame: (p, t) => p.evaluate((u) => window.sl.diveAt(u), 0.22 + 0.78 * t) },
+  "dive": { hash: { ...BAY, cinema: "1" }, frame: (p, t) => p.evaluate((u) => window.sl.diveAt(u), 0.22 + 0.78 * t) },
   "fishing-now": {
     hash: { ...BAY, day: NOW, lens: "fishing" },
     frame: (p, t) => orbit(p, lerp(0.20, 0.60, ease(t)), -0.46, lerp(1.8, 1.55, ease(t))),

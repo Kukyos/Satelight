@@ -9,7 +9,7 @@ import script from '../script.json';
 import voice from './voice.json';
 import {
   counts, cyclone, depths, evidence, floatsPerYear, gaps, harnessCommand, heat, hidden, latency,
-  latencyMeasured, nowcastScore, prefloatScore, quantity, repo, rmse, s4,
+  latencyMeasured, quantity, repo, rmseFor, s4,
 } from './data';
 
 // Near-black ground, one idea per card, light type, one accent: the viewer's own yellow.
@@ -22,7 +22,7 @@ type Scene = {
   id: string; act: string; say: string; card?: string; seconds?: number; clips?: Clip[];
   lower?: string; lowers?: string[]; quote?: string; cite?: string; lines?: string[]; lowerAt?: 'left' | 'right' | 'center'; image?: string; big?: string;
   tiles?: { title: string; clip?: string; from?: number; card?: string }[];
-  quantity?: string; units?: string; heading?: string; tier?: string;
+  quantity?: string; units?: string; heading?: string; tier?: string; source?: string;
 };
 const scenes = script.scenes as Scene[];
 
@@ -203,9 +203,12 @@ const RMSE: React.FC<{ s: Scene }> = ({ s }) => {
   const draw = (at: number) => interpolate(f, [at, at + 45], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <Card act={s.act}>
-      <Rise><div style={{ fontSize: 46, fontWeight: 300, marginBottom: 26 }}>Error against held-out Argo, by depth · RMSE °C</div></Rise>
+      <Rise><div style={{ fontSize: 46, fontWeight: 300, marginBottom: 26 }}>{
+        s.source === 'prefloat' ? 'Error against Argo, 2005–2009, by depth · RMSE °C'
+          : s.source ? 'Error against real-time Argo, by depth · RMSE °C'
+          : 'Error against held-out Argo, by depth · RMSE °C'}</div></Rise>
       <div style={{ display: 'flex', gap: 60 }}>
-        {rmse.map((r, i) => (
+        {rmseFor(s.source).map((r, i) => (
           <Rise key={r.title} at={6 + i * 6}>
             <div style={{ fontSize: 28, marginBottom: 4 }}>{r.title}</div>
             <div style={{ fontSize: 20, color: C.faint, marginBottom: 8 }}>{r.n} cast-depth pairs</div>
@@ -215,7 +218,7 @@ const RMSE: React.FC<{ s: Scene }> = ({ s }) => {
               {depths.map((d, k) => (k % 2 === 0 || d === 1000) && <text key={d} x={50} y={y(k) + 5} fill={C.faint} fontSize={16} textAnchor="end">{d}</text>)}
               <rect x={60} y={y(6) - 8} width={W - 80} height={y(9) - y(6) + 16} fill={C.warn} opacity={0.08 * draw(150)} />
               <path d={path(r.clim, draw(20))} stroke={C.dim} strokeWidth={2.5} strokeDasharray="6 6" fill="none" />
-              <path d={path(r.glorys, draw(55))} stroke={C.warn} strokeWidth={2.5} fill="none" />
+              {r.glorys && <path d={path(r.glorys, draw(55))} stroke={C.warn} strokeWidth={2.5} fill="none" />}
               <path d={path(r.ours, draw(90))} stroke={C.accent} strokeWidth={4.5} fill="none" />
             </svg>
           </Rise>
@@ -223,8 +226,9 @@ const RMSE: React.FC<{ s: Scene }> = ({ s }) => {
       </div>
       <Rise at={120}><div style={{ fontSize: 24, color: C.dim, marginTop: 10, display: 'flex', gap: 44 }}>
         <span>– – climatology, the floor</span>
-        <span><span style={{ color: C.accent }}>━</span> Satelight, satellites only</span>
-        <span><span style={{ color: C.warn }}>━</span> GLORYS, the ceiling: it assimilated these floats</span>
+        <span><span style={{ color: C.accent }}>━</span> {s.source === 'nowcast-fast' ? 'Satelight nowcast, four fields' : s.source === 'prefloat' ? 'Satelight, before its training years' : 'Satelight, satellites only'}</span>
+        {s.source?.startsWith('nowcast') ? <span style={{ color: C.warn }}>no GLORYS: it does not reach these days yet</span>
+          : <span><span style={{ color: C.warn }}>━</span> GLORYS, the ceiling: it assimilated these floats</span>}
         <span style={{ color: C.faint }}>depth in m</span>
       </div></Rise>
     </Card>
@@ -268,10 +272,10 @@ const Figure: React.FC<{ s: Scene }> = ({ s }) => {
     `Surface change, box mean: Satelight ${cy.ours0} °C · GLORYS ${cy.glorys0} · climatology ${cy.clim0}`,
     `Heat potential, kJ/cm²: Satelight ${cy.tOurs} · GLORYS ${cy.tGlorys}`,
     ...(s.lines || []),
-  ] : [...(s.lines || []),
+  ] : s.id === 'embedding' ? [...(s.lines || []),
     `Mixed-layer depth, never trained on, linear probe R² (${s4.run}): embedding ${s4.emb} · raw inputs ${s4.raw}`,
     `Seasons, clustering NMI (${s4.head}, the headline): embedding ${s4.nmi} · day of year alone ${s4.nmiDoy}`,
-    'No single embedding does both yet: S4 is half met.'];
+    'No single embedding does both yet: S4 is half met.'] : (s.lines || []);
   return (
     <Card act={s.act}>
       <div style={{ display: 'flex', gap: 64, alignItems: 'center' }}>
@@ -290,7 +294,6 @@ const Figure: React.FC<{ s: Scene }> = ({ s }) => {
 const Floats: React.FC<{ s: Scene }> = ({ s }) => {
   const f = useCurrentFrame();
   const max = Math.max(...floatsPerYear.map((x) => x.n));
-  const p = prefloatScore;
   return (
     <Card act={s.act}>
       <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 40 }}>Argo profiles per year in the box</div></Rise>
@@ -306,9 +309,6 @@ const Floats: React.FC<{ s: Scene }> = ({ s }) => {
           );
         })}
       </div>
-      <Rise at={90}><div style={{ fontSize: 28, color: C.ink, marginTop: 44 }}>
-        Scored {p.scored[0].slice(0, 4)}–{p.scored[1].slice(0, 4)} against {p.casts} casts, RMSE °C (climatology · Satelight · GLORYS):{' '}
-        {p.rows.map((r) => `${r.d} m ${r.clim.toFixed(2)} · ${r.ours.toFixed(2)} · ${r.glorys.toFixed(2)}`).join('   ')}</div></Rise>
       <Rise at={110}><div style={{ fontSize: 24, color: C.dim, marginTop: 18 }}>{s.lines![0]}</div></Rise>
     </Card>
   );
@@ -318,7 +318,6 @@ const Floats: React.FC<{ s: Scene }> = ({ s }) => {
 const Latency: React.FC<{ s: Scene }> = ({ s }) => {
   const f = useCurrentFrame();
   const max = Math.max(...latency.map((x) => x.days));
-  const sc = nowcastScore(s.tier ?? 'fast');
   return (
     <Card act={s.act}>
       <Rise><div style={{ fontSize: 48, fontWeight: 300, marginBottom: 36 }}>Days behind, measured {latencyMeasured}</div></Rise>
@@ -332,9 +331,6 @@ const Latency: React.FC<{ s: Scene }> = ({ s }) => {
           </div>
         );
       })}
-      <Rise at={100}><div style={{ fontSize: 28, color: C.ink, marginTop: 30 }}>
-        Nowcast {sc.days[0]} → {sc.days[1]}, against {sc.casts} real-time Argo casts, RMSE °C (climatology · Satelight):{' '}
-        {sc.rows.map((r) => `${r.d} m ${r.clim.toFixed(2)} · ${r.ours.toFixed(2)}`).join('   ')}</div></Rise>
       <Rise at={120}><div style={{ fontSize: 24, color: C.dim, marginTop: 18 }}>{s.lines![0]}</div></Rise>
     </Card>
   );
@@ -369,7 +365,7 @@ const Index: React.FC<{ s: Scene }> = ({ s }) => {
                   </Loop>
                 ) : (
                   <div style={{ width: 1920, height: 1080, transform: `scale(${W / 1920})`, transformOrigin: 'top left' }}>
-                    {React.createElement(CARDS[t.card!], { s: sceneById(t.card!) })}
+                    {React.createElement(CARDS[sceneById(t.card!).card!], { s: sceneById(t.card!) })}
                   </div>
                 )}
               </div>

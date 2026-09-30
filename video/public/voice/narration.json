@@ -1,11 +1,11 @@
 {
   "open": {
-    "hash": "cef565d782a1e1cc",
-    "seconds": 11.19
+    "hash": "bd3be7e3fb8beec6",
+    "seconds": 10.45
   },
   "title": {
-    "hash": "fb6f562ffcb3c6b1",
-    "seconds": 3.02
+    "hash": "d42221a805aadb53",
+    "seconds": 3.44
   },
   "brief": {
     "hash": "df5b20fe5f0d9fdf",
@@ -16,12 +16,12 @@
     "seconds": 14.4
   },
   "inputs": {
-    "hash": "3efcbbc525133fc0",
-    "seconds": 16.49
+    "hash": "9f398fba4c7747c9",
+    "seconds": 13.05
   },
   "pipeline": {
-    "hash": "ead27ee80b390ab0",
-    "seconds": 24.24
+    "hash": "7a05ba1b24dadad4",
+    "seconds": 17.55
   },
   "fields": {
     "hash": "492fcb3ab5a7d1c6",
@@ -32,24 +32,24 @@
     "seconds": 8.17
   },
   "floats": {
-    "hash": "d4d77071b3d10743",
-    "seconds": 12.91
+    "hash": "bac80a49c35a3263",
+    "seconds": 6.13
   },
   "qc": {
     "hash": "8572878fd7a87909",
     "seconds": 9.24
   },
   "rmse": {
-    "hash": "d431c0dcd2673515",
-    "seconds": 20.53
+    "hash": "3006174d2f6ae9ed",
+    "seconds": 14.63
   },
   "gap": {
     "hash": "5d17f2d09d93d674",
     "seconds": 9.43
   },
   "heat": {
-    "hash": "5cc494b17c51c2ec",
-    "seconds": 20.99
+    "hash": "807ed9ba72b8103b",
+    "seconds": 13.47
   },
   "mocha": {
     "hash": "1a0f7fc9608d4c5b",
@@ -72,8 +72,8 @@
     "seconds": 13.33
   },
   "embedding": {
-    "hash": "a7f85a1980da110f",
-    "seconds": 27.59
+    "hash": "10eb4293bae6a27a",
+    "seconds": 17.93
   },
   "whole": {
     "hash": "03967d9a6ba82af6",
@@ -88,11 +88,71 @@
     "seconds": 5.48
   },
   "notyet": {
-    "hash": "a15173353717c418",
-    "seconds": 10.45
+    "hash": "1e92122a90918c19",
+    "seconds": 9.33
   },
   "end": {
     "hash": "621c81d4c5766799",
     "seconds": 4.74
+  },
+  "index": {
+    "hash": "0adc8ab2929b3ebe",
+    "seconds": 15.09
+  },
+  "dive": {
+    "hash": "dca303cdd39d5102",
+    "seconds": 13.61
+  },
+  "fishing": {
+    "hash": "d8252cbc61dd1f3b",
+    "seconds": 14.07
+  },
+  "tamil": {
+    "hash": "3df16d5cdb93f9c5",
+    "seconds": 6.04
+  },
+  "fishing-score": {
+    "hash": "81608274d29205c9",
+    "seconds": 13
+  },
+  "cyclone": {
+    "hash": "1d298ab97b53c983",
+    "seconds": 13.75
+  },
+  "now": {
+    "hash": "34da7048af79f861",
+    "seconds": 12.49
+  },
+  "latency": {
+    "hash": "e4b0744832772fc0",
+    "seconds": 8.08
+  },
+  "nowcast-rmse": {
+    "hash": "f93342665f4ba9c5",
+    "seconds": 17.04
+  },
+  "prefloat": {
+    "hash": "9282d4688ea63ded",
+    "seconds": 9.75
+  },
+  "prefloat-rmse": {
+    "hash": "7a44ef786fb6d7de",
+    "seconds": 10.73
+  },
+  "heatwave": {
+    "hash": "6b9556142e6868da",
+    "seconds": 9.71
+  },
+  "hidden": {
+    "hash": "98959f8357dee0a4",
+    "seconds": 15.14
+  },
+  "sonar": {
+    "hash": "b9c013307a89c1bd",
+    "seconds": 15.19
+  },
+  "check": {
+    "hash": "33069b0464179ec5",
+    "seconds": 11.33
   }
 }

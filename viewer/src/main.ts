@@ -680,6 +680,7 @@ async function start(): Promise<void> {
   try { evaluation = await api.evaluation(); } catch { evaluation = undefined; }
 
   const h = readHash();
+  if ((h as Record<string, string>).cinema === "1") document.body.classList.add("cinema");
   state = {
     day: meta.days.includes(h.day ?? "") ? h.day!
       : meta.days[Math.min(meta.days.indexOf(meta.splits.test[0]) + 160, meta.days.length - 1)],

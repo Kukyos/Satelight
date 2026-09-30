@@ -1,12 +1,20 @@
 # The film
 
-A film of the running prototype, **5 min 45 s**, cut in code with Remotion, in the
-same grammar as PS 26067's film: near-black cards with one idea each, footage of the
-viewer with lower thirds, one narrator (ElevenLabs' **Charlotte**) reading every line. The
-accent is the viewer's own yellow.
+A film of the running prototype, about **6 min 15 s**, cut in code with Remotion, in the
+same grammar as PS 26067's long film (not its abandoned short cut): a cinematic open,
+an index of what is coming, near-black cards with one idea each, footage of the viewer
+with lower thirds. The accent is the viewer's own yellow.
+
+**The voice is the team's.** Each scene's line is recorded by a team member, one file per
+scene. ElevenLabs' Charlotte reads every line first (`npm run narrate`), only as a guide
+track: it sets each scene's length (`narrate.mjs --fit`) and shows the pace. A team
+recording replaces it by taking its name: `video/public/voice/<scene>.wav` (or `.m4a`),
+with the guide's `<scene>.mp3` deleted. `npm run check` then measures the real takes and
+fails any scene a take overruns; lengthen that scene in `script.json` and re-run.
 
 It renders as two copies with the same picture and timing: `video/out/satelight-film.mp4`
-with the narration and `video/out/satelight-film-no-voice.mp4` without it.
+with whatever voice is in `public/voice/`, and `video/out/satelight-film-no-voice.mp4`
+without it, for recording against.
 
 The script to read, with timecodes, is **`21-film-script.md`**, generated from
 `video/script.json` by `node video/check.mjs`, so it cannot drift from the cut.
@@ -69,13 +77,21 @@ GLORYS, INCOIS, kJ/cm²).
 
 | Act | Scenes | On screen |
 |---|---|---|
-| Opening | `open`, `title`, `brief` | The Bay of Bengal after Mocha, orbiting; the title; the brief's own sentence |
-| Why and how | `sparse`, `inputs`, `pipeline` | floats vs satellites; the eight fields; the pipeline to the embedding and 15 depths |
-| The viewer | `fields`, `axis`, `floats`, `qc` | reconstruction, GLORYS, climatology, error; √ and linear depth; a held-out float; the counts |
-| What the floats say | `rmse`, `gap`, `heat` | RMSE by depth per basin; share of the gap closed; heat potential |
-| Cyclones | `mocha`, `mocha-card`, `biparjoy` | days stepped through each storm; the harness's wake maps and numbers |
-| Limits | `error`, `reference`, `embedding` | the error view; INCOIS checked; the embedding, half met |
-| Close | `whole`, `arabian`, `evidence`, `notyet`, `end` | the whole box; measured tiles and the command; what is not done; the repository |
+| Opening | `open`, `title`, `index`, `brief` | the planet from space with that day's satellite SST, down to the Bay (cinema mode, no panels); the title; nine looping chapter tiles; the brief's own sentence |
+| The dive | `dive` | orbit to 1,000 m, the cube peeled level by level, the gauge and NOAA's light zones |
+| How it works | `inputs`, `pipeline` | the eight fields; the pipeline to the embedding and 15 depths |
+| How deep to fish | `fishing`, `tamil`, `fishing-score` | the nowcast day with INCOIS's zones; one advisory in Tamil; the 20 °C depth against Argo |
+| Cyclone fuel | `cyclone`, `heat` | Mocha stepped day by day on IMD's track; heat potential against Argo |
+| This morning's ocean | `now`, `latency`, `nowcast-rmse` | the Now button; measured delays; RMSE by depth on real-time floats (no GLORYS: it does not reach those days) |
+| Before the floats | `prefloat`, `floats`, `prefloat-rmse` | November 1997; Argo profiles per year; RMSE by depth on 2005–2009, beside GLORYS |
+| Hidden heatwaves | `heatwave`, `hidden` | the heatwave lens; detections against Argo |
+| The sonar layer | `sonar` | the mixed-layer lens, and that it is not there yet |
+| Checked | `check`, `rmse`, `embedding` | a held-out float; RMSE by depth on the test block; the embedding, half met |
+| Close | `evidence`, `notyet`, `end` | measured tiles and the command; what is not done; the repository |
+
+`check.mjs` also asserts every claim the narration makes in words (beats climatology to
+150 m, behind GLORYS down to 500 m, not better at the sonar layer, and so on) against the
+harness output, so a new harness run cannot leave the film saying something false.
 
 ## Checks before it ships
 
