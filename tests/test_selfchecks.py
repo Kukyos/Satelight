@@ -4,7 +4,7 @@ import importlib
 
 import pytest
 
-MODULES = ["config", "grid", "arco", "argo", "baselines", "evaluate", "embed", "model"]
+MODULES = ["config", "grid", "arco", "argo", "baselines", "evaluate", "embed", "model", "globe"]
 
 
 @pytest.mark.parametrize("name", MODULES)

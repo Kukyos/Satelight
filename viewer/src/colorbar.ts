@@ -25,6 +25,17 @@ export interface Palette {
 
 export const PALETTES: Palette[] = [
   {
+    id: "turbo",
+    label: "Turbo",
+    note: "Google's Turbo (Mikhailov 2019), a perceptually smoothed rainbow: the warm end, " +
+      "where every tropical sea surface sits, spans orange to dark red instead of one yellow",
+    stops: [
+      [48, 18, 59], [67, 85, 196], [62, 155, 254], [24, 214, 203], [70, 247, 131],
+      [162, 252, 60], [225, 221, 55], [254, 164, 49], [239, 90, 17], [194, 36, 3],
+      [122, 4, 3],
+    ],
+  },
+  {
     id: "thermal",
     label: "Thermal",
     note: "cmocean thermal — the conventional choice for sea temperature",

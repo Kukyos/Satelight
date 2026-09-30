@@ -6,7 +6,9 @@
 //   node capture.cjs              every clip in script.json
 //   node capture.cjs bay-orbit    or just some
 //
-// Each clip is exactly script.json's seconds at 30 fps, 1920 x 1080, H.264 CRF 16, into
+// Each clip is exactly script.json's seconds at 30 fps, rendered at 3840 x 2160 (device
+// scale 2, 4x MSAA, every tile loaded before each photograph) and downscaled with Lanczos
+// to 1920 x 1080, H.264 CRF 14, into
 // public/clips/<name>.mp4. Waits for data (a day change, a field switch) happen on the
 // real clock between frames, so a load is shorter in the film than it was. Nothing on
 // screen is staged: every field, float and panel is what the API returned.
@@ -36,7 +38,7 @@ async function settle(page, quiet = 900, max = 90000) {
 
 async function open(browser, hash) {
   const page = await browser.newPage();
-  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
   await page.evaluateOnNewDocument(() => {
     const f = window.fetch;
     window.__inflight = 0;
@@ -48,6 +50,7 @@ async function open(browser, hash) {
   page.on("pageerror", (e) => console.log("  page error:", e.message));
   await page.goto(`${BASE}#${new URLSearchParams(hash)}`, { waitUntil: "load" });
   await settle(page);
+  await page.evaluate(() => window.sl.hq());
   await sleep(2200);   // the opening fly-to is 1.6 s
   return page;
 }
@@ -139,11 +142,12 @@ async function record(browser, name, seconds) {
   const n = Math.round(seconds * FPS);
   const file = path.join(OUT, `${name}.mp4`);
   const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS),
-    "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", "-r", String(FPS), file]);
+    "-i", "-", "-vf", "scale=1920:1080:flags=lanczos", "-c:v", "libx264", "-crf", "14",
+    "-preset", "slow", "-pix_fmt", "yuv420p", "-r", String(FPS), file]);
   const t0 = Date.now();
   for (let f = 0; f < n; f++) {
     await clip.frame(page, f / n);
-    await page.evaluate(() => window.sl.viewer.scene.render());
+    await page.evaluate(() => window.sl.sharp());
     const buf = await page.screenshot({ type: "jpeg", quality: 94 });
     if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once("drain", r));
   }

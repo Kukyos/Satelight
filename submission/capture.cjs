@@ -22,8 +22,9 @@ async function settle(page, quiet = 1500, max = 120000) {
     if (idle) break;
     await sleep(300);
   }
-  await page.evaluate(() => window.sl.viewer.scene.requestRender());
+  await page.evaluate(() => window.sl.hq());
   await sleep(2500);   // the fly-to takes 1.6 s
+  await page.evaluate(() => window.sl.sharp());
 }
 
 async function open(browser, hash) {

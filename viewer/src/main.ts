@@ -13,14 +13,13 @@ import {
   Cartesian3,
   Color,
   HeadingPitchRange,
-  ImageryLayer,
+  JulianDate,
   Material,
   Matrix4,
   PointPrimitiveCollection,
   PolylineCollection,
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
-  TileMapServiceImageryProvider,
 } from "@cesium/engine";
 import { Viewer } from "@cesium/widgets";
 
@@ -28,8 +27,9 @@ import { ApiError, api, f32, u8, type Cast, type Eval, type Meta } from "./api";
 import { depthChart, keys, type Series } from "./charts";
 import { byId, paletteLut, renderLegend } from "./colorbar";
 import { CubeData, type DepthAxis } from "./cube/data";
-import { rgbFor, type Style } from "./cube/paint";
+import { position, rgbFor, type Style } from "./cube/paint";
 import { CubeScene } from "./cube/scene";
+import { Planet } from "./globe";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -50,6 +50,11 @@ const COLORS: Record<string, string> = {
 // Tables name runs "unet (selected)", "unet-extended (comparison)": colour by the run.
 const color = (name: string) => COLORS[name.replace(/ \(.*\)$/, "")] ?? COLORS[name] ?? "#B8C7D6";
 const TEMP_RANGE: [number, number] = [2, 31];
+// 26 °C at the middle of the bar, the temperature above which the ocean can feed a
+// cyclone: the upper half is that warm layer, where every tropical sea surface lives, the
+// lower half the cold water below. Linear, the surface was one colour.
+const TEMP_KNEE: [number, number] = [26, 0.5];
+const TEMP_PALETTE = "turbo";
 const ERROR_RANGE: [number, number] = [-2, 2];
 const ARGO = Color.fromCssColorString("#F5C542");
 
@@ -60,6 +65,7 @@ let evaluation: Eval | undefined;
 let state: State;
 let cube: CubeScene;
 let viewer: Viewer;
+let planet: Planet;
 const castLines = new PolylineCollection();
 const castTops = new PointPrimitiveCollection();
 let casts: Cast[] = [];
@@ -104,22 +110,36 @@ function style(): Style {
   const error = state.field === "error";
   const [lo, hi] = error ? ERROR_RANGE : TEMP_RANGE;
   return {
-    lut: paletteLut(byId(error ? "balance" : "thermal")),
-    lo, hi, log: false, step: error ? 0.5 : 2, vertical: "smooth", axis: state.axis,
+    lut: paletteLut(byId(error ? "balance" : TEMP_PALETTE)),
+    lo, hi, log: false, knee: error ? undefined : TEMP_KNEE,
+    step: error ? 0.5 : 2, vertical: "smooth", axis: state.axis,
     cubeTop: 0, cubeBottom: 1000,
   };
 }
 
 function legend(s: Style): void {
   const bar = $<HTMLCanvasElement>("bar");
-  bar.getContext("2d")!.drawImage(renderLegend(byId(state.field === "error" ? "balance" : "thermal"),
+  bar.getContext("2d")!.drawImage(renderLegend(byId(state.field === "error" ? "balance" : TEMP_PALETTE),
                                                false, 240, 10), 0, 0);
   $("lo").textContent = `${s.lo}`;
   $("hi").textContent = `${s.hi}`;
+  // Ticks where they fall on a stretched bar, so its spacing is never read as linear.
+  const ticks = s.knee ? [10, 20, 26, 29] : [];
+  $("ticks").replaceChildren(...ticks.map((v) => Object.assign(document.createElement("span"),
+    { textContent: String(v), style: `left:${(position(v, s) * 100).toFixed(1)}%` })));
   $("units").textContent = state.field === "error" ? "°C, reconstruction − GLORYS" : "°C";
 }
 
 // ------------------------------------------------------------------ the cube
+
+/** The planet around the cube: the same day's satellite SST on the cube's colour bar. */
+async function paintOcean(s: Style): Promise<void> {
+  const show = state.field !== "error";
+  await planet.ocean(state.day, show, s.lut, (v) => position(v, s), `${s.lo}|${s.hi}|${s.knee}`);
+  $("around").textContent = show && planet.source
+    ? `Around the cube: satellite sea surface temperature, ${planet.source}`
+    : "Around the cube: land and sea floor only (the error has no °C colour bar)";
+}
 
 async function drawCube(fly = false): Promise<void> {
   try {
@@ -135,6 +155,7 @@ async function drawCube(fly = false): Promise<void> {
                         lat1: r.lats[r.lats.length - 1], top: 0, bottom: 1000 },
                 s, widthM * 0.36);
     legend(s);
+    void paintOcean(s);
     drawCasts();
     notice(null);
     if (fly) aim();
@@ -337,6 +358,8 @@ function drawSkill(): void {
 
 function setDay(day: string): void {
   state.day = day;
+  // 06:30 UTC is about noon at the box's middle longitude (75°E).
+  viewer.clock.currentTime = JulianDate.fromIso8601(`${day}T06:30:00Z`);
   const d = new Date(`${day}T00:00:00Z`);
   $("date").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "long",
                                                            year: "numeric", timeZone: "UTC" });
@@ -387,13 +410,12 @@ async function start(): Promise<void> {
   viewer.scene.backgroundColor = Color.fromCssColorString("#0D1B2A");
   if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
   viewer.scene.requestRenderMode = true;
-  try {
-    const base = await TileMapServiceImageryProvider.fromUrl("/cesium/Assets/Textures/NaturalEarthII");
-    const layer = new ImageryLayer(base);
-    layer.brightness = 0.55;
-    layer.saturation = 0.6;
-    viewer.imageryLayers.add(layer);
-  } catch { /* the plain ocean-blue globe stands in */ }
+  // Sunlight where it really falls: the clock stands at local noon over the box on the
+  // shown day (setDay), so the far side of the planet is night and the globe has shape.
+  viewer.scene.globe.enableLighting = true;
+  viewer.scene.globe.showGroundAtmosphere = true;
+  planet = new Planet(viewer);
+  await planet.land();
   viewer.scene.primitives.add(castLines);
   viewer.scene.primitives.add(castTops);
   cube = new CubeScene(viewer.scene);
@@ -484,6 +506,24 @@ async function start(): Promise<void> {
         new BoundingSphere(Cartesian3.fromDegrees(x.lon, x.lat, x.mid), x.widthM * 0.55),
         new HeadingPitchRange(heading, pitch, x.widthM * range));
       viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+      viewer.scene.render();
+    },
+    // Capture quality: every device pixel rendered (Cesium otherwise renders at CSS
+    // pixels on a high-density screen) and 4x MSAA.
+    hq: () => {
+      viewer.useBrowserRecommendedResolution = false;
+      viewer.scene.msaaSamples = 4;
+    },
+    // Render until every imagery and terrain tile in view has arrived, so a photograph is
+    // never taken of a blurry placeholder tile. Tiles load through images, not fetch, so
+    // the capture scripts' network count cannot see them.
+    sharp: async (maxMs = 20000) => {
+      const t0 = performance.now();
+      viewer.scene.render();
+      while (!viewer.scene.globe.tilesLoaded && performance.now() - t0 < maxMs) {
+        await new Promise((r) => setTimeout(r, 50));
+        viewer.scene.render();
+      }
       viewer.scene.render();
     },
     setDay: async (day: string) => {

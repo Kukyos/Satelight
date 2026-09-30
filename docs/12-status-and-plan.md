@@ -87,6 +87,30 @@ with stdout and stderr to `data/logs/`). Keep the machine plugged in and awake.
    closed, cyclone heat potential vs Argo, cyclone wakes) added to the harness
    (`14-novelties.md`).*
 
+## The second round: uses, not metrics (decided 2026-09-30)
+
+The first novelty list (gap closed, heat potential, wakes, provenance) is technical: any
+team building this brief would write it. The second round asks what only a *daily,
+satellite-only* view of the water column can do, that Argo (too sparse) and GLORYS
+(months late) cannot, and for whom. Chosen with the team, all eight:
+
+| # | Use | Who | Measured by | Status |
+|---|---|---|---|---|
+| U1 | **How deep to fish**: the top of the thermocline (20 °C isotherm) per cell per day, a readout per fishing harbour, INCOIS's own PFZ advisories laid over it | Fishers | D20 against Argo (harness, N2) | — |
+| U2 | **Cyclone fuel gauge**: heat potential painted day by day as Mocha and Biparjoy cross, with the best track | Forecasters, disaster managers | TCHP against Argo (harness, N2); wake numbers (N3) | — |
+| U3 | **Advisories in coastal languages**: U1's readout as text and speech | Fishers | Machine-translated and labelled so | — |
+| U4 | **Sonar layer**: mixed-layer depth from temperature, where a sonar's surface duct ends | Navy | MLD against Argo on the same levels (harness) | — |
+| U5 | **The Dive**: orbit to 1,000 m in one move, the sea peeling away level by level, light fading | Everyone; the pitch | — | — |
+| U6 | **This morning's ocean**: each input's delay measured against GLORYS's; the model run on the latest day the inputs allow | INCOIS operations | Measured latencies; real-time Argo when it arrives | — |
+| U7 | **Before the floats**: 1993–2009 reconstructed from the extended cube, labelled a comparison (salinity is not satellite before 2010) | Climate | Floats per year; delayed-mode Argo 2005–2009 | — |
+| U8 | **Hidden heatwaves**: marine heatwaves below a surface that looks normal | Fisheries, reefs | Flags checked against Argo casts (harness) | — |
+
+And the picture: the globe was Natural Earth at ~20 km a pixel with no ocean colour, so
+the cube stood on a flat, dull planet. Now NASA Blue Marble relief (via GIBS, Natural Earth
+as the offline fallback) and the same day's satellite SST (OSTIA) painted on the ocean
+around the cube, on the cube's colour bar, labelled with its product and date. The film is
+captured at twice the pixel density with MSAA, each frame waiting for the imagery tiles.
+
 ## Disk
 
 About 78 GB, mostly regenerable:

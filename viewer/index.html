@@ -66,8 +66,10 @@
     background: rgba(13,27,42,.78); border: 1px solid var(--shelf-hi); border-radius: 8px;
     padding: 8px 10px; backdrop-filter: blur(4px); }
   .legend canvas { width: 100%; height: 10px; display: block; border-radius: 2px; }
+  .legend .ticks { position: relative; height: 13px; color: var(--slate); font-size: 10px; }
+  .legend .ticks span { position: absolute; transform: translateX(-50%); }
   .legend .ends { display: flex; justify-content: space-between; color: var(--slate); font-size: 11px; }
-  .legend .argo { margin-top: 6px; color: var(--slate); font-size: 11px; }
+  .legend .argo, .legend .around { margin-top: 6px; color: var(--slate); font-size: 11px; }
   .legend .argo i { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     background: var(--argo); margin-right: 6px; vertical-align: 0; }
   .notice { position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
@@ -141,8 +143,10 @@
     <div class="stamp"><div class="date" id="date">—</div><div class="what" id="what"></div></div>
     <div class="legend" aria-hidden="true">
       <canvas id="bar" width="240" height="10"></canvas>
+      <div class="ticks" id="ticks"></div>
       <div class="ends"><span id="lo"></span><span id="units"></span><span id="hi"></span></div>
       <div class="argo"><i></i>Argo floats in the test block, ±3 days, coloured by what they measured</div>
+      <div class="around" id="around"></div>
     </div>
   </main>
 

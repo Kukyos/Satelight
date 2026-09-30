@@ -218,6 +218,25 @@ def column(day: str, lat: float, lon: float):
             "seafloor": None if not np.isfinite(seafloor()[j, i]) else float(seafloor()[j, i])}
 
 
+GLOBE_RANGE = (-2.0, 34.0)   # °C spanned by the globe's bytes; 255 is no sea
+
+
+@app.get("/api/globe")
+def globe(day: str):
+    """The whole planet's satellite SST on this day, around the cube (display only; globe.py).
+    One byte per 0.25° cell over GLOBE_RANGE, 255 where there is no sea."""
+    from . import globe as g
+    d = str(_day(day))
+    try:
+        v, source = g.sst(d)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    lo, hi = GLOBE_RANGE
+    q = np.where(np.isfinite(v), np.clip(np.round((v - lo) / (hi - lo) * 254), 0, 254), 255)
+    return {"day": d, "source": source, "shape": list(v.shape), "range": list(GLOBE_RANGE),
+            "west": -180.0, "south": -90.0, "res": 0.25, "values": b64(q, np.uint8)}
+
+
 @app.get("/api/eval")
 def evaluation():
     path = config.DATA / "eval-latest.json"

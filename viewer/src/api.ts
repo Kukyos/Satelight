@@ -42,6 +42,11 @@ export interface Eval {
   argo_counts: Record<string, number>;
 }
 
+export interface Globe {
+  day: string; source: string; shape: [number, number]; range: [number, number];
+  west: number; south: number; res: number; values: string;
+}
+
 export class ApiError extends Error {}
 
 async function get<T>(path: string): Promise<T> {
@@ -84,4 +89,5 @@ export const api = {
   column: (day: string, lat: number, lon: number) =>
     get<Column>(`/api/column?${q({ day, lat, lon })}`),
   evaluation: () => get<Eval>("/api/eval"),
+  globe: (day: string) => get<Globe>(`/api/globe?${q({ day })}`),
 };

@@ -175,6 +175,16 @@ Raised to **fetched**. Each line was read from the data, not from documentation.
 and then. TLS verification stays on everywhere; hosts that fail are routed around, never
 trusted blindly.
 
+## Display-only sources — 2026-09-30
+
+Shown around the cube, never an input, a target or a score.
+
+| Source | What was measured |
+|---|---|
+| OSTIA global, reprocessed `METOFFICE-GLO-SST-L4-REP-OBS-SST` | `arco-geo-series` store, chunks 1 day × 1024 × 1024, packed int16, 3600 × 7200 at 0.05°. Records 1981-10-01 → 2026-03-31. One global day reads in ≈ 3.7 s. Block-meaned 5 × 5 to 0.25° (`satelight/globe.py`), sea where ≥ 13 of 25 native cells are sea. |
+| OSTIA global, near-real-time `METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2` | Opens the same way; 2026-09-28 was already there on 2026-09-30, **two days' delay**. Used after the reprocessed record ends. |
+| NASA Blue Marble shaded relief and bathymetry, GIBS WMTS | Public domain, no key, level 8 (≈ 600 m a pixel). Natural Earth II, bundled with Cesium, shows if GIBS cannot be reached. |
+
 ## Re-probing
 
 Every claim marked **catalogue** gets re-checked by the ingest self-checks once real

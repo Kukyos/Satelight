@@ -19,6 +19,12 @@ export interface Style {
   lo: number;
   hi: number;
   log: boolean;
+  /**
+   * A stretched colour bar, like the √depth axis: this value sits at this fraction of the
+   * bar, linear on each side of it. Temperature uses it because a tropical sea surface
+   * varies over 3 °C of a 2–31 °C bar; linear, the whole surface is one colour.
+   */
+  knee?: [number, number];
   /** Contour interval in data units; 0 draws none. */
   step: number;
   vertical: Vertical;
@@ -33,18 +39,24 @@ const ROCK: [number, number, number] = [58, 50, 44];
 export const LAND: [number, number, number] = [112, 104, 90];
 const FLOOR_EDGE: [number, number, number] = [210, 196, 170];
 
-/** Colour index 0..255 for a value, or -1 for no value. */
-function index(v: number, s: Style): number {
-  if (v !== v) return -1;
-  let t: number;
+/** Where a value falls on the colour bar, 0..1 (unclamped). */
+export function position(v: number, s: Style): number {
+  if (s.knee) {
+    const [kv, kt] = s.knee;
+    return v <= kv ? kt * (v - s.lo) / (kv - s.lo) : kt + (1 - kt) * (v - kv) / (s.hi - kv);
+  }
   if (s.log) {
     const lo = Math.log(Math.max(s.lo, 1e-9));
     const hi = Math.log(Math.max(s.hi, 1e-9));
-    t = (Math.log(Math.max(v, 1e-9)) - lo) / (hi - lo || 1);
-  } else {
-    t = (v - s.lo) / (s.hi - s.lo || 1);
+    return (Math.log(Math.max(v, 1e-9)) - lo) / (hi - lo || 1);
   }
-  return Math.max(0, Math.min(255, Math.round(t * 255)));
+  return (v - s.lo) / (s.hi - s.lo || 1);
+}
+
+/** Colour index 0..255 for a value, or -1 for no value. */
+function index(v: number, s: Style): number {
+  if (v !== v) return -1;
+  return Math.max(0, Math.min(255, Math.round(position(v, s) * 255)));
 }
 
 /** A value's colour through the style's colour bar, for things drawn outside a face. */
