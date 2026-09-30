@@ -25,6 +25,9 @@ depth and in each basin.
 | `10-unsourced.md` | Values we are using without a source. | Before quoting any value. |
 | `11-deferred.md` | Everything knowingly incomplete, with what it blocks. | The live status doc. |
 | `13-eval-results.md` | Generated numbers. Never hand-edited. | Whenever an accuracy claim is questioned. |
+| `14-novelties.md` | What the project does beyond the brief, each with its harness numbers. | Before pitching it. |
+| `16-submission.md` | How the idea deck is built, and the rules it keeps. | Before rebuilding the deck. |
+| `21-film.md`, `21-film-script.md` | How the film is built; the script with timecodes (generated). | Before re-cutting or re-recording it. |
 
 ## Built on PS 26067
 

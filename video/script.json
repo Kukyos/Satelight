@@ -1,0 +1,307 @@
+{
+  "_": "The film, scene by scene. check.mjs checks every number against data/eval-latest.json or `sourced`, the pace, and each clip's length; narrate.mjs reads `say` in Charlotte's voice; capture.cjs records each clip to its seconds. How it is built: docs/21-film.md.",
+  "wordsPerSecond": 2.5,
+  "sourced": {
+    "8": "config.INPUTS: eight input channels",
+    "15": "config.DEPTHS: the 15 standard depths the problem statement names",
+    "26": "config.TCHP_T: Leipper and Volgenau (1972), heat above 26 degC",
+    "32": "configs/hybrid.toml: the embedding width (the harness labels its probe 'embedding (32 per cell)')",
+    "90": "gap_closed, Bay of Bengal, 75 m, hybrid: 0.895 in data/eval-latest.json, said as a percentage",
+    "2010": "config.SPLITS: the training block starts 2010-02-04",
+    "2020": "config.SPLITS: the training block ends 2020-12-31",
+    "2026": "SIH 2026",
+    "26066": "the problem statement ID",
+    "_": "Numbers said or shown that are not harness output, and where each comes from.",
+    "0.25": "config.RES: the common grid",
+    "0.05": "OSTIA native resolution, the problem statement's dataset table"
+  },
+  "speak": {
+    "_": "How a word is said, where the screen keeps the spelling.",
+    "OceanEmbed": "Ocean Embed",
+    "GLORYS": "Glorys",
+    "RMSE": "R M S E",
+    "INCOIS": "in-coys",
+    "kJ/cm²": "kilojoules per square centimetre"
+  },
+  "scenes": [
+    {
+      "id": "open",
+      "act": "",
+      "lower": "The Bay of Bengal, 17 May 2023, surface to 1,000 m",
+      "clips": [
+        {
+          "name": "bay-orbit",
+          "seconds": 13,
+          "minSeconds": 8
+        }
+      ],
+      "say": "This is the Bay of Bengal on the seventeenth of May, 2023, from the surface down to a thousand metres. No instrument measured this. It was reconstructed from satellites alone."
+    },
+    {
+      "id": "title",
+      "card": "title",
+      "seconds": 5.5,
+      "minSeconds": 5,
+      "say": "OceanEmbed. The ocean below, seen from space."
+    },
+    {
+      "id": "brief",
+      "card": "quote",
+      "act": "The brief",
+      "seconds": 9,
+      "minSeconds": 9,
+      "quote": "The objective is to estimate the three-dimensional ocean temperature using only surface satellite observations.",
+      "cite": "SIH 2026 · PS 26066 · INCOIS, Ministry of Earth Sciences",
+      "say": "INCOIS asks for one thing: estimate the three-dimensional ocean temperature, using only surface satellite observations."
+    },
+    {
+      "id": "sparse",
+      "card": "rows",
+      "act": "Why it matters",
+      "seconds": 16.5,
+      "minSeconds": 10,
+      "say": "Floats that dive and measure are few. In the two held-out years, 6,345 Argo casts surfaced in this whole box. Satellites see every cell, every day, but only the surface. The heat that feeds a cyclone sits underneath.",
+      "lines": [
+        "Argo floats|6,345 casts in two years, over the whole box",
+        "Satellites|every 0.25° cell, every day, but only the surface",
+        "A cyclone|feeds on the heat below it"
+      ]
+    },
+    {
+      "id": "inputs",
+      "card": "rows",
+      "act": "What the satellites see",
+      "seconds": 18.5,
+      "minSeconds": 12,
+      "lines": [
+        "Sea surface temperature|OSTIA, 0.05°, block-averaged to the grid",
+        "Sea surface salinity|SMOS and SMAP, multi-observation product",
+        "Sea level and its anomaly|DUACS, 0.25°: the common grid",
+        "Surface currents, east and north|OSCAR, NASA PO.DAAC",
+        "Surface winds, east and north|CCMP, four synoptic times averaged to the day"
+      ],
+      "say": "So the model gets eight surface fields: temperature, salinity, sea level and its anomaly, currents east and north, and winds east and north. Each is fetched from its source and averaged onto one grid, a quarter of a degree, every day. Every assumption travels with the file."
+    },
+    {
+      "id": "pipeline",
+      "card": "pipeline",
+      "act": "How it works",
+      "seconds": 26,
+      "minSeconds": 16,
+      "lines": [
+        "Trained on GLORYS12, 2010 to 2020. GLORYS is the target, never an input."
+      ],
+      "say": "A convolutional encoder with a transformer reads each day's surface, and compresses every cell into 32 numbers: the embedding. A decoder turns those numbers into temperature at the 15 standard depths, from the surface to a thousand metres, and masks every cell shallower than a level. It trains on the GLORYS reanalysis, 2010 to 2020, and never sees GLORYS as an input."
+    },
+    {
+      "id": "fields",
+      "act": "The viewer",
+      "lower": "Reconstruction · GLORYS · Climatology · Error",
+      "clips": [
+        {
+          "name": "fields",
+          "seconds": 15.5,
+          "minSeconds": 12
+        }
+      ],
+      "say": "In the viewer, the reconstruction stands on the globe, beside the eight inputs and the embedding. Switch to GLORYS, the target; to climatology, the floor; and to the error: the reconstruction minus GLORYS, in three dimensions."
+    },
+    {
+      "id": "axis",
+      "act": "The viewer",
+      "lower": "The Arabian Sea, 18 June 2023 · √ depth, then linear depth",
+      "clips": [
+        {
+          "name": "linear-depth",
+          "seconds": 10,
+          "minSeconds": 8
+        }
+      ],
+      "say": "The depth axis is stretched, so the upper ocean, where the weather lives, gets the room. Switch to linear depth, and the thousand metres stand true."
+    },
+    {
+      "id": "floats",
+      "act": "Held-out floats",
+      "lower": "One Argo float against every model, with its QC and source file",
+      "lowerAt": "left",
+      "clips": [
+        {
+          "name": "float-click",
+          "seconds": 15,
+          "minSeconds": 9
+        }
+      ],
+      "say": "The yellow marks are Argo floats from the held-out years, 2023 and 2024, which the model never saw. Pick one, and its profile sits beside every model, with its quality flag, data mode, and source file."
+    },
+    {
+      "id": "qc",
+      "card": "counts",
+      "act": "Every float counted",
+      "seconds": 11,
+      "minSeconds": 9,
+      "say": "Of those casts, 6,144 are scored. 8,500 levels failed quality control. They are counted in the report, never silently dropped."
+    },
+    {
+      "id": "rmse",
+      "card": "rmse",
+      "act": "What the floats say",
+      "seconds": 22,
+      "minSeconds": 18,
+      "say": "Scored against those floats, depth by depth, OceanEmbed beats climatology from the surface to 300 metres, in the Bay and in the Arabian Sea, and stays behind GLORYS, which had already assimilated these floats. The thermocline, 75 to 150 metres, is the hard part: the error peaks there, and it runs warm."
+    },
+    {
+      "id": "gap",
+      "card": "gap",
+      "act": "Between the floor and the ceiling",
+      "seconds": 11.5,
+      "minSeconds": 10,
+      "lines": [
+        "(RMSE climatology − RMSE OceanEmbed) / (RMSE climatology − RMSE GLORYS), per depth and basin"
+      ],
+      "say": "Put another way: at the surface it closes 75 percent of the gap between climatology and GLORYS. In the Bay of Bengal, at 75 metres, 90 percent."
+    },
+    {
+      "id": "heat",
+      "card": "heat",
+      "act": "What a cyclone feeds on",
+      "seconds": 23.5,
+      "minSeconds": 14,
+      "lines": [
+        "Tropical cyclone heat potential: the heat above 26 °C, from each profile's 15 levels"
+      ],
+      "say": "A cyclone forecaster reads heat, not degrees. Tropical cyclone heat potential is the heat stored above 26 degrees. Against the floats, climatology misses it by 21.0 kJ/cm². OceanEmbed misses by 12.9, and GLORYS by 11.9. In the Bay of Bengal, OceanEmbed and GLORYS are level."
+    },
+    {
+      "id": "mocha",
+      "act": "Cyclone Mocha",
+      "lower": "Bay of Bengal, 3 to 20 May 2023 · satellites only",
+      "clips": [
+        {
+          "name": "mocha-days",
+          "seconds": 10.5,
+          "minSeconds": 10
+        }
+      ],
+      "say": "In May 2023, Cyclone Mocha crossed the Bay. Step through the days: under the storm's track, the reconstruction cools, from satellites alone."
+    },
+    {
+      "id": "mocha-card",
+      "card": "figure",
+      "act": "Cyclone Mocha",
+      "image": "cyclone_mocha.png",
+      "big": "Mocha",
+      "seconds": 17.5,
+      "minSeconds": 14,
+      "lines": [
+        "Dates: IMD RSMC New Delhi. A case study beside the Argo scores, not a validation: GLORYS is the training target."
+      ],
+      "say": "Across the storm, the box's surface cooled 0.70 degrees in the reconstruction, and 1.39 in GLORYS. Its heat potential fell from 93.6 to 80.0. The wake is there, in the right place, at about half the strength."
+    },
+    {
+      "id": "biparjoy",
+      "act": "Cyclone Biparjoy",
+      "lower": "Arabian Sea, 2 to 19 June 2023 · satellites only",
+      "clips": [
+        {
+          "name": "biparjoy-days",
+          "seconds": 15,
+          "minSeconds": 10
+        }
+      ],
+      "say": "A month later, Biparjoy lingered in the Arabian Sea for more than a week. In its box, the reconstruction's heat potential fell from 100.3 to 82.6; GLORYS's, from 109.0 to 82.2."
+    },
+    {
+      "id": "error",
+      "act": "Where it is wrong",
+      "lower": "Error view · reconstruction minus GLORYS, Arabian Sea, 20 May 2024",
+      "clips": [
+        {
+          "name": "error-orbit",
+          "seconds": 11,
+          "minSeconds": 9
+        }
+      ],
+      "say": "The error view shows where satellites can see below the surface, and where they cannot. Here, a warm band in the thermocline: the same warm bias the floats found."
+    },
+    {
+      "id": "reference",
+      "card": "rows",
+      "act": "The reference is checked too",
+      "seconds": 15.5,
+      "minSeconds": 12,
+      "lines": [
+        "INCOIS gridded Argo, range-tested first|values outside the Argo global range are rejected and counted",
+        "Then scored against the floats itself|beside GLORYS brought to the same 1°, 10-day grid",
+        "It agrees less well than GLORYS|so the floats carry the validation; INCOIS is shown beside them, with that caveat"
+      ],
+      "say": "We checked the reference too. INCOIS's gridded Argo agrees with the floats less well than GLORYS does, at its own resolution. So the floats themselves carry the validation, and INCOIS is shown beside them, with that caveat."
+    },
+    {
+      "id": "embedding",
+      "card": "figure",
+      "act": "The embedding",
+      "image": "embedding_hybrid_2023-07-15.png",
+      "seconds": 26,
+      "minSeconds": 16,
+      "lines": [
+        "The first three components as colour, 15 July 2023: water that looks alike to the model, painted alike."
+      ],
+      "say": "And the embedding itself. It is saved every day, as a file you can open: here, its first three components as colour. One encoder's embedding predicts the mixed-layer depth, which it was never trained on, better than the raw inputs do: R squared 0.351, against 0.255. But no embedding yet beats the calendar at sorting the seasons. That proof is half met, and we say so."
+    },
+    {
+      "id": "whole",
+      "act": "One model",
+      "lower": "The whole North Indian Ocean box, 15 July 2023",
+      "clips": [
+        {
+          "name": "whole-orbit",
+          "seconds": 8.5,
+          "minSeconds": 8
+        }
+      ],
+      "say": "One model covers the whole North Indian Ocean, from the Arabian Sea to the Andaman, every day, at 15 depths."
+    },
+    {
+      "id": "arabian",
+      "act": "One model",
+      "lower": "The Arabian Sea after Biparjoy, 18 June 2023",
+      "clips": [
+        {
+          "name": "arabian-orbit",
+          "seconds": 9,
+          "minSeconds": 8
+        }
+      ],
+      "say": "It runs on one laptop graphics card, from free public data, and every run is rebuilt from a config file and a seed."
+    },
+    {
+      "id": "evidence",
+      "card": "evidence",
+      "act": "Measured",
+      "seconds": 10,
+      "minSeconds": 10,
+      "say": "Every number in this film comes from one harness, which anyone can run again from the repository."
+    },
+    {
+      "id": "notyet",
+      "card": "rows",
+      "act": "Not yet",
+      "seconds": 14,
+      "minSeconds": 14,
+      "lines": [
+        "The embedding proof|half met: a second encoder is being trained",
+        "The thermocline|runs warm, by 0.88 °C at 100 m against the floats",
+        "INCOIS's own portal|the brief's LAS link was not found; ERDDAP stands in",
+        "The years after 2024|salinity joins a near-real-time product there; the join is unchecked"
+      ],
+      "say": "What is not done yet: the embedding proof; a warm thermocline; INCOIS's own portal; and the years after 2024. Each one is written down, with what it blocks."
+    },
+    {
+      "id": "end",
+      "card": "end",
+      "seconds": 7,
+      "minSeconds": 7,
+      "say": "OceanEmbed. The code, the documents, and every number are in the repository."
+    }
+  ]
+}

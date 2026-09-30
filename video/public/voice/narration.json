@@ -1,0 +1,98 @@
+{
+  "open": {
+    "hash": "cef565d782a1e1cc",
+    "seconds": 11.19
+  },
+  "title": {
+    "hash": "74eceddecb035822",
+    "seconds": 3.34
+  },
+  "brief": {
+    "hash": "df5b20fe5f0d9fdf",
+    "seconds": 7.2
+  },
+  "sparse": {
+    "hash": "9a01f9881b3db4bc",
+    "seconds": 14.4
+  },
+  "inputs": {
+    "hash": "3efcbbc525133fc0",
+    "seconds": 16.49
+  },
+  "pipeline": {
+    "hash": "ead27ee80b390ab0",
+    "seconds": 24.24
+  },
+  "fields": {
+    "hash": "492fcb3ab5a7d1c6",
+    "seconds": 13.47
+  },
+  "axis": {
+    "hash": "fccb5380443dd2b1",
+    "seconds": 8.17
+  },
+  "floats": {
+    "hash": "d4d77071b3d10743",
+    "seconds": 12.91
+  },
+  "qc": {
+    "hash": "8572878fd7a87909",
+    "seconds": 9.24
+  },
+  "rmse": {
+    "hash": "7917217a9d1813ff",
+    "seconds": 19.88
+  },
+  "gap": {
+    "hash": "5d17f2d09d93d674",
+    "seconds": 9.43
+  },
+  "heat": {
+    "hash": "7a8e682d98ae5068",
+    "seconds": 21.69
+  },
+  "mocha": {
+    "hash": "1a0f7fc9608d4c5b",
+    "seconds": 8.36
+  },
+  "mocha-card": {
+    "hash": "e20c371a66e06032",
+    "seconds": 15.56
+  },
+  "biparjoy": {
+    "hash": "8434d6011cc689b3",
+    "seconds": 13.19
+  },
+  "error": {
+    "hash": "2fb03f9c866097a0",
+    "seconds": 9.01
+  },
+  "reference": {
+    "hash": "a248bb0cd301bb18",
+    "seconds": 13.33
+  },
+  "embedding": {
+    "hash": "c1b9d89c59b2ebbc",
+    "seconds": 24.29
+  },
+  "whole": {
+    "hash": "03967d9a6ba82af6",
+    "seconds": 6.64
+  },
+  "arabian": {
+    "hash": "6530a7b252eca63c",
+    "seconds": 7.15
+  },
+  "evidence": {
+    "hash": "290ecac81c54dc81",
+    "seconds": 5.48
+  },
+  "notyet": {
+    "hash": "a15173353717c418",
+    "seconds": 10.45
+  },
+  "end": {
+    "hash": "ebc83391177f1fa7",
+    "seconds": 5.25
+  }
+}

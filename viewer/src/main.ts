@@ -15,6 +15,7 @@ import {
   HeadingPitchRange,
   ImageryLayer,
   Material,
+  Matrix4,
   PointPrimitiveCollection,
   PolylineCollection,
   ScreenSpaceEventHandler,
@@ -476,6 +477,19 @@ async function start(): Promise<void> {
     ready: true,
     pickCast: async (i: number) => { selected = { kind: "cast", cast: casts[i] }; await drawProfile(); },
     pickCell: async (lat: number, lon: number) => { selected = { kind: "cell", lat, lon }; await drawProfile(); },
+    // Camera about the cube, set at once (no flight), and one explicit render.
+    orbit: (heading: number, pitch: number, range = 1.9) => {
+      const x = cube.extent();
+      viewer.camera.viewBoundingSphere(
+        new BoundingSphere(Cartesian3.fromDegrees(x.lon, x.lat, x.mid), x.widthM * 0.55),
+        new HeadingPitchRange(heading, pitch, x.widthM * range));
+      viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+      viewer.scene.render();
+    },
+    setDay: async (day: string) => {
+      $<HTMLInputElement>("day").value = String(meta.days.indexOf(day));
+      await refreshDay();
+    },
   } });
 }
 
