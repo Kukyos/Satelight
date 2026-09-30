@@ -42,7 +42,7 @@ npm run narrate                  # Charlotte reads what changed; each scene is s
 node capture.cjs                 # every clip -> public/clips/*.mp4 (about 10 minutes)
 npm run check                    # numbers, pacing, clip lengths; writes 21-film-script.md
 npm run studio                   # preview
-npm run render                   # check, render, then both copies
+npm run render                   # check, render in segments (render.mjs), then both copies
 ```
 
 `capture.cjs` opens the viewer headless at 1920 × 1080, sets the camera for each frame
@@ -51,6 +51,12 @@ photographs it, piping frames into ffmpeg (30 fps, H.264 CRF 16). Day steps and 
 switches wait for their data on the real clock between frames, so a load is shorter in the
 film than it was. Clip lengths come from `script.json`, and `check.mjs` fails if a clip
 does not match.
+
+`render.mjs` renders the picture in 1,500-frame segments, kept between runs, then the
+audio once, and joins them. A segment that crashes the headless browser is retried, and a
+re-run renders only what is missing. Inter comes from the `@fontsource-variable/inter`
+package and is bundled, so a render never waits on a font server; no frame is taken
+before it has loaded.
 
 `narrate.mjs` needs `ELEVENLABS_API_KEY` in `.env` (never committed). A line re-renders
 only when its text or the voice changes; the mp3s in `public/voice/` are committed, so a
