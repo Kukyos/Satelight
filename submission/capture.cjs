@@ -90,6 +90,33 @@ const SHOTS = {
     const p = await open(b, { day: "2024-05-20", region: "Arabian Sea", field: "error", axis: "stretched" });
     await shoot(p, "error"); await shoot(p, "error-view", "#view"); await p.close();
   },
+  // The lenses: what the column is for.
+  async "lens-fishing"(b) {
+    const p = await open(b, { day: "2023-06-18", region: "Arabian Sea", field: "satelight", axis: "stretched", lens: "fishing" });
+    await p.evaluate(() => window.sl.pickCell(15.0, 66.0)); await settle(p, 800);
+    await shoot(p, "lens-fishing"); await p.close();
+  },
+  async "lens-cyclone"(b) {
+    const p = await open(b, { day: "2023-05-12", region: "Bay of Bengal", field: "satelight", axis: "stretched", lens: "cyclone" });
+    await shoot(p, "lens-cyclone"); await p.close();
+  },
+  async "lens-sonar"(b) {
+    const p = await open(b, { day: "2023-07-15", region: "North Indian Ocean", field: "satelight", axis: "stretched", lens: "sonar" });
+    await shoot(p, "lens-sonar"); await p.close();
+  },
+  async "lens-heatwave"(b) {
+    const p = await open(b, { day: "2023-03-15", region: "Bay of Bengal", field: "satelight", axis: "stretched", lens: "heatwave" });
+    await shoot(p, "lens-heatwave"); await p.close();
+  },
+  async dive(b) {
+    const p = await open(b, { day: "2023-05-17", region: "Bay of Bengal", field: "satelight", axis: "stretched" });
+    for (const t of [0.05, 0.3, 0.55, 0.9]) {
+      await p.evaluate((t) => window.sl.diveAt(t), t);
+      await p.evaluate(() => window.sl.sharp());
+      await shoot(p, `dive-${Math.round(t * 100)}`, "#view");
+    }
+    await p.close();
+  },
   // A day with no reconstruction (an input is missing): the viewer must say so, not fill it.
   async skipped(b) {
     const p = await open(b, { day: "2024-08-31", region: "Bay of Bengal", field: "satelight", axis: "stretched" });

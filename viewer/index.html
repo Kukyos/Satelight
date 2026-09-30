@@ -15,6 +15,7 @@
     --warm: #E8876A; --left: 300px; --right: 360px;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--abyss); color: var(--mist);
     font: 13px/1.5 "Instrument Sans", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
   button, select, input { font: inherit; color: inherit; }
@@ -76,7 +77,36 @@
     background: var(--shelf); border: 1px solid var(--shelf-hi); border-radius: 8px;
     padding: 8px 14px; color: var(--mist); max-width: 70%; display: none; }
   .notice.on { display: block; }
-  .tools { position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; }
+  .tools { position: absolute; top: 14px; right: 16px; display: flex; flex-direction: column;
+    align-items: flex-end; gap: 8px; }
+  .tools .row { display: flex; gap: 8px; }
+  .lensbar { position: absolute; left: 18px; bottom: 18px; }
+  .diving .lensbar, .diving .legend .argo { display: none; }
+  .dive { border: 1px solid var(--argo); background: rgba(245,197,66,.12); color: var(--argo);
+    border-radius: 999px; padding: 5px 16px; cursor: pointer; font-weight: 600; }
+  .dive:hover { background: rgba(245,197,66,.24); }
+  .dark { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 60%, rgba(2,6,14,.35), rgba(2,6,14,.95)); }
+  .gauge { position: absolute; left: 22px; bottom: 22px; pointer-events: none;
+    text-shadow: 0 2px 18px rgba(0,0,0,.8); }
+  .gauge .zone { color: var(--argo); font-size: 13px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; }
+  .gauge .depth { font-family: "Instrument Serif", Georgia, serif; font-size: 84px; line-height: 1; }
+  .gauge .temp { color: var(--mist); font-size: 15px; margin-top: 4px; }
+  .gauge .src { color: var(--dim); font-size: 10.5px; margin-top: 6px; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+    margin: 0 5px 0 8px; vertical-align: -1px; }
+  .legend .sw:first-child { margin-left: 0; }
+  #lens-card h2 { font-size: 15px; }
+  #lens-card .what { color: var(--mist); margin: 2px 0 8px; font-size: 12px; }
+  .scores { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 6px; }
+  .scores td, .scores th { padding: 3px 0; border-bottom: 1px solid var(--shelf-hi); text-align: right; }
+  .scores td:first-child, .scores th:first-child { text-align: left; color: var(--slate); }
+  .scores th { color: var(--dim); font-weight: 500; font-size: 11px; }
+  .note { color: var(--dim); font-size: 11px; margin: 4px 0 0; }
+  .here { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--shelf);
+    border: 1px solid var(--shelf-hi); font-size: 12px; }
+  .here b { color: var(--argo); font-weight: 600; }
 
   #time { grid-area: time; background: var(--abyss); display: flex; align-items: center;
     gap: 14px; padding: 0 18px; }
@@ -138,12 +168,24 @@
     <div id="globe"></div>
     <div class="notice" id="notice" role="status"></div>
     <div class="tools">
-      <div class="seg" id="axis" role="group" aria-label="Depth axis"></div>
+      <div class="row">
+        <button class="dive" id="dive" title="From orbit to 1,000 m">Dive</button>
+        <div class="seg" id="axis" role="group" aria-label="Depth axis"></div>
+      </div>
     </div>
+    <div class="seg lensbar" id="lenses" role="group" aria-label="Lens"></div>
     <div class="stamp"><div class="date" id="date">—</div><div class="what" id="what"></div></div>
+    <div class="dark" id="dark"></div>
+    <div class="gauge" id="gauge" hidden>
+      <div class="zone" id="gauge-zone"></div>
+      <div class="depth" id="gauge-depth"></div>
+      <div class="temp" id="gauge-temp"></div>
+      <div class="src">Light zones: NOAA National Ocean Service. Darkening illustrative.</div>
+    </div>
     <div class="legend" aria-hidden="true">
       <canvas id="bar" width="240" height="10"></canvas>
       <div class="ticks" id="ticks"></div>
+      <div id="hw-keys" hidden></div>
       <div class="ends"><span id="lo"></span><span id="units"></span><span id="hi"></span></div>
       <div class="argo"><i></i>Argo floats in the test block, ±3 days, coloured by what they measured</div>
       <div class="around" id="around"></div>
@@ -157,6 +199,13 @@
   </div>
 
   <aside id="right">
+    <section id="lens-card" hidden>
+      <h2 id="lens-title"></h2>
+      <p class="what" id="lens-what"></p>
+      <p class="lede" id="lens-read"></p>
+      <div id="lens-scores"></div>
+      <div class="here" id="lens-here" hidden></div>
+    </section>
     <section>
       <h2>One column of water</h2>
       <p class="where" id="where">Click the cube, or a yellow Argo float.</p>

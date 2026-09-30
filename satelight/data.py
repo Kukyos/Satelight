@@ -30,10 +30,11 @@ def _years(a: date, b: date) -> list[int]:
     return list(range(a.year, b.year + 1))
 
 
-def _read(source: str, var: str, a: date, b: date) -> tuple[np.ndarray, np.ndarray]:
+def _read(source: str, var: str, a: date, b: date,
+          root: Path | None = None) -> tuple[np.ndarray, np.ndarray]:
     parts, times = [], []
     for y in _years(a, b):
-        with xr.open_dataset(cube_path(source, y)) as ds:
+        with xr.open_dataset(cube_path(source, y, root)) as ds:
             d = ds[var].sel(time=slice(str(a), str(b)))
             parts.append(d.values.astype(np.float32))
             times.append(d["time"].values.astype("datetime64[D]"))
@@ -74,7 +75,8 @@ class Stats:
 
 
 def load_raw(split: str, inputs: list[str], with_target: bool = True,
-             span: tuple[date, date] | None = None, lags: list[int] = (0,)):
+             span: tuple[date, date] | None = None, lags: list[int] = (0,),
+             root: Path | None = None):
     """Raw physical fields for a split (or any span): inputs (T, C x len(lags), H, W),
     target (T, 15, H, W) or None, and the days. Days where any input is missing are
     dropped and reported.
@@ -84,10 +86,10 @@ def load_raw(split: str, inputs: list[str], with_target: bool = True,
     so reaching into the gap before a block never touches a target (hard rule 6)."""
     a, b = span or config.SPLITS[split]
     lead = max(lags)
-    a0 = max(a - timedelta(days=lead), min(a, config.WINDOW[0]))
+    a0 = a - timedelta(days=lead) if root else max(a - timedelta(days=lead), min(a, config.WINDOW[0]))
     chans, t = [], None
     for v in inputs:
-        arr, tv = _read(SOURCE_OF[v], v, a0, b)
+        arr, tv = _read(SOURCE_OF[v], v, a0, b, root)
         assert t is None or np.array_equal(t, tv), f"time axes differ at {v}"
         t = tv
         chans.append(arr)

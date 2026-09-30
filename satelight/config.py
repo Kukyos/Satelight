@@ -15,6 +15,7 @@ CACHE = DATA / "cache"
 CUBE = DATA / "cube"
 RUNS = ROOT / "runs"
 OUTPUT = DATA / "output"
+CUBE_NRT = DATA / "cube-nrt"   # near-real-time inputs for the nowcast; never trained on
 
 # ---------------------------------------------------------------- the common grid (L4)
 

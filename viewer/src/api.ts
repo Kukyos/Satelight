@@ -40,7 +40,20 @@ export interface Eval {
   generated: string; contenders: string[]; depths: number[];
   argo: Record<string, Record<string, Scores[]>>;
   argo_counts: Record<string, number>;
+  hazard?: Record<string, Record<string, Record<string, Scores & { obs_mean?: number | null }>>>;
+  heatwave?: Record<string, Record<string, { n: number; observed: number; by: Record<string, {
+    hits: number; false_alarms: number; misses: number;
+    pod: number | null; far: number | null; hss: number | null }> }>>;
 }
+
+export interface Lens {
+  day: string; lens: string; title: string; units: string; what: string;
+  dimensions: [number, number]; lons: number[]; lats: number[]; range: [number, number];
+  values: string;
+}
+
+export interface TrackPoint { time: string; lat: number; lon: number; grade: string;
+                              grade_name: string; wind_kt: number | null }
 
 export interface Globe {
   day: string; source: string; shape: [number, number]; range: [number, number];
@@ -90,4 +103,11 @@ export const api = {
     get<Column>(`/api/column?${q({ day, lat, lon })}`),
   evaluation: () => get<Eval>("/api/eval"),
   globe: (day: string) => get<Globe>(`/api/globe?${q({ day })}`),
+  lens: (day: string, name: string, region: string) =>
+    get<Lens>(`/api/lens?${q({ day, name, region })}`),
+  lensAt: (day: string, lat: number, lon: number) =>
+    get<{ day: string; lat: number; lon: number; values: Record<string, number | null> }>(
+      `/api/lens/at?${q({ day, lat, lon })}`),
+  track: (name: string) => get<{ name: string; source: string; points: TrackPoint[] }>(
+    `/api/track?${q({ name })}`),
 };

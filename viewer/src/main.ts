@@ -30,6 +30,7 @@ import { CubeData, type DepthAxis } from "./cube/data";
 import { position, rgbFor, type Style } from "./cube/paint";
 import { CubeScene } from "./cube/scene";
 import { Planet } from "./globe";
+import { LENSES, type LensName, Track, heatwaveLegend, lensScores, lensStyle, lensTop } from "./lens";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -58,7 +59,7 @@ const TEMP_PALETTE = "turbo";
 const ERROR_RANGE: [number, number] = [-2, 2];
 const ARGO = Color.fromCssColorString("#F5C542");
 
-interface State { day: string; region: string; field: string; axis: DepthAxis }
+interface State { day: string; region: string; field: string; axis: DepthAxis; lens: LensName }
 
 let meta: Meta;
 let evaluation: Eval | undefined;
@@ -66,10 +67,13 @@ let state: State;
 let cube: CubeScene;
 let viewer: Viewer;
 let planet: Planet;
+let track: Track;
 const castLines = new PolylineCollection();
 const castTops = new PointPrimitiveCollection();
 let casts: Cast[] = [];
 let lastStyle: Style | undefined;
+let lastCube: { data: CubeData; cut: { lon0: number; lon1: number; lat0: number; lat1: number };
+                height: number } | undefined;
 let selected: { kind: "cast"; cast: Cast } | { kind: "cell"; lat: number; lon: number } | undefined;
 
 // ------------------------------------------------------------------ state in the URL
@@ -119,15 +123,21 @@ function style(): Style {
 
 function legend(s: Style): void {
   const bar = $<HTMLCanvasElement>("bar");
-  bar.getContext("2d")!.drawImage(renderLegend(byId(state.field === "error" ? "balance" : TEMP_PALETTE),
-                                               false, 240, 10), 0, 0);
+  const lens = state.lens !== "temperature" ? LENSES[state.lens] : undefined;
+  $("bar").hidden = state.lens === "heatwave";
+  $("hw-keys").hidden = state.lens !== "heatwave";
+  $("hw-keys").innerHTML = state.lens === "heatwave" ? heatwaveLegend() : "";
+  bar.getContext("2d")!.drawImage(renderLegend(byId(lens?.palette ?? (state.field === "error" ? "balance" : TEMP_PALETTE)),
+                                               lens?.reversed ?? false, 240, 10), 0, 0);
   $("lo").textContent = `${s.lo}`;
   $("hi").textContent = `${s.hi}`;
   // Ticks where they fall on a stretched bar, so its spacing is never read as linear.
-  const ticks = s.knee ? [10, 20, 26, 29] : [];
+  const ticks = lens ? lens.ticks : s.knee ? [10, 20, 26, 29] : [];
   $("ticks").replaceChildren(...ticks.map((v) => Object.assign(document.createElement("span"),
     { textContent: String(v), style: `left:${(position(v, s) * 100).toFixed(1)}%` })));
-  $("units").textContent = state.field === "error" ? "°C, reconstruction − GLORYS" : "°C";
+  $("units").textContent = lens ? (lens.units ? `top: ${lens.units}` : "")
+    : state.field === "error" ? "°C, reconstruction − GLORYS" : "°C";
+  $("lo").hidden = $("hi").hidden = state.lens === "heatwave";
 }
 
 // ------------------------------------------------------------------ the cube
@@ -149,12 +159,20 @@ async function drawCube(fly = false): Promise<void> {
         valueRange: r.valueRange },
       f32(r.values), f32(r.seafloor));
     const s = style();
-    lastStyle = s;
     const widthM = (r.lons[r.lons.length - 1] - r.lons[0]) * 111_320;
+    let top: { data: CubeData; style: Style } | undefined;
+    if (state.lens !== "temperature") {
+      top = { data: await lensTop(state.lens, state.day, state.region, f32(r.seafloor)),
+              style: lensStyle(state.lens, s) };
+    }
     cube.render(data, { lon0: r.lons[0], lon1: r.lons[r.lons.length - 1], lat0: r.lats[0],
                         lat1: r.lats[r.lats.length - 1], top: 0, bottom: 1000 },
-                s, widthM * 0.36);
-    legend(s);
+                s, widthM * 0.36, top);
+    lastStyle = s;   // only now: the floats are drawn against the rendered cube's heights
+    lastCube = { data, cut: { lon0: r.lons[0], lon1: r.lons[r.lons.length - 1], lat0: r.lats[0],
+                              lat1: r.lats[r.lats.length - 1] }, height: widthM * 0.36 };
+    legend(top?.style ?? s);
+    await drawTrack();
     void paintOcean(s);
     drawCasts();
     notice(null);
@@ -171,6 +189,145 @@ function aim(): void {
   viewer.camera.flyToBoundingSphere(new BoundingSphere(centre, x.widthM * 0.55), {
     offset: new HeadingPitchRange(0.42, -0.36, x.widthM * 1.9), duration: 1.6,
   });
+}
+
+// ------------------------------------------------------------------ lenses
+
+const STORMS: { name: string; region: string; from: string; to: string }[] = [
+  { name: "Mocha", region: "Bay of Bengal", from: "2023-05-03", to: "2023-05-20" },
+  { name: "Biparjoy", region: "Arabian Sea", from: "2023-06-02", to: "2023-06-21" },
+];
+
+async function drawTrack(): Promise<void> {
+  const storm = state.lens === "cyclone" && STORMS.find((x) =>
+    (state.region === x.region || state.region === "North Indian Ocean") &&
+    state.day >= x.from && state.day <= x.to);
+  if (!storm) { track.clear(); return; }
+  try { await track.show(storm.name, state.day, cube.heightOf(0)); } catch { track.clear(); }
+}
+
+function drawLensCard(): void {
+  const card = $("lens-card");
+  card.hidden = state.lens === "temperature";
+  if (state.lens === "temperature") return;
+  const d = LENSES[state.lens];
+  $("lens-title").textContent = d.label;
+  $("lens-what").textContent = {
+    fishing: "How deep the warm layer reaches: the depth of the 20 °C isotherm, the core of the thermocline.",
+    cyclone: "The fuel in the sea for a cyclone: heat stored above 26 °C.",
+    sonar: "Where the well-mixed top layer ends, and with it a hull sonar's surface duct.",
+    heatwave: "Marine heatwaves 50–150 m down, and whether the surface gives them away.",
+  }[state.lens];
+  $("lens-read").textContent = d.read;
+  $("lens-scores").innerHTML = lensScores(evaluation, state.lens, state.region, meta.run);
+}
+
+async function drawLensHere(lat: number, lon: number): Promise<void> {
+  const box = $("lens-here");
+  if (state.lens === "temperature") { box.hidden = true; return; }
+  try {
+    const r = await api.lensAt(state.day, lat, lon);
+    const v = r.values;
+    const m = (x: number | null | undefined, u: string) => (x == null ? "—" : `<b>${Math.round(x)}</b> ${u}`);
+    const hw = v.heatwave == null ? "—" : ["none", "heatwave at the surface too",
+                                           "<b>hidden heatwave</b> below a normal surface"][v.heatwave];
+    box.innerHTML = `${r.lat.toFixed(2)}°N ${r.lon.toFixed(2)}°E, ${r.day}<br>` +
+      `Warm layer ends (20 °C) at ${m(v.fishing, "m")} · mixed layer ${m(v.sonar, "m")}<br>` +
+      `Cyclone fuel ${m(v.cyclone, "kJ/cm²")} · 50–150 m: ${hw}`;
+    box.hidden = false;
+  } catch { box.hidden = true; }
+}
+
+// ------------------------------------------------------------------ the dive
+
+/**
+ * From orbit to 1,000 m in one move. The first quarter brings the camera down from space
+ * to the cube; then the sea is peeled away from the top, a level at a time: the cube's top
+ * becomes the horizontal section at the dive depth, the walls keep what lies below, and
+ * the camera follows it down. The gauge shows the depth, the box-mean temperature there
+ * from the reconstruction, and the light zone (NOAA National Ocean Service: rarely any
+ * significant light below 200 m, some detectable to 1,000 m). The darkening is an
+ * illustration of that, not a measured light field.
+ *
+ * `diveAt(t)` sets the whole scene for t in 0..1, so the film captures it frame by frame
+ * and the button plays the same thing in real time.
+ */
+const DIVE_MS = 14000;
+const DIVE_SPACE = 0.22;           // share of the dive spent coming down from orbit
+let diving = false;
+
+function diveDepth(t: number): number {
+  if (t <= DIVE_SPACE) return 0;
+  const u = (t - DIVE_SPACE) / (1 - DIVE_SPACE);
+  const e = u * u * (3 - 2 * u);
+  return 1000 * e * e;              // slow through the warm layer, faster in the deep
+}
+
+function boxMean(data: CubeData, depth: number): number {
+  let sum = 0, n = 0;
+  const lv = data.levelsAt(depth, "smooth");
+  for (let j = 0; j < data.ny; j += 1) {
+    for (let i = 0; i < data.nx; i += 1) {
+      const v = data.sample(i, j, lv);
+      if (v === v) { sum += v; n += 1; }
+    }
+  }
+  return n ? sum / n : NaN;
+}
+
+function diveAt(t: number): void {
+  if (!lastCube || !lastStyle) return;
+  // The floats' sticks stand in the water being peeled away: out of the way while diving.
+  castLines.show = castTops.show = false;
+  $("view").classList.add("diving");
+  const x = cube.extent();
+  const depth = diveDepth(t);
+  const c = lastCube;
+  cube.render(c.data, { ...c.cut, top: Math.min(depth, 995), bottom: 1000 }, lastStyle, c.height);
+  const ease = (u: number) => u * u * (3 - 2 * u);
+  const a = ease(Math.min(1, t / DIVE_SPACE));
+  const range = x.widthM * (a < 1 ? 9 - 7.1 * a : 1.9 - 0.35 * ((t - DIVE_SPACE) / (1 - DIVE_SPACE)));
+  const pitch = a < 1 ? -1.35 + 0.99 * a : -0.36 - 0.1 * ((t - DIVE_SPACE) / (1 - DIVE_SPACE));
+  const heading = 0.1 + 0.5 * t;
+  const target = Cartesian3.fromDegrees(x.lon, x.lat, cube.heightOf(depth) - x.widthM * 0.05);
+  viewer.camera.viewBoundingSphere(new BoundingSphere(target, x.widthM * 0.55),
+                                   new HeadingPitchRange(heading, pitch, range));
+  viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+  // The gauge and the light.
+  const g = $("gauge");
+  g.hidden = t <= DIVE_SPACE * 0.8;
+  const mean = boxMean(c.data, Math.max(depth, 0));
+  $("gauge-depth").textContent = `${Math.round(depth).toLocaleString()} m`;
+  $("gauge-temp").textContent = Number.isFinite(mean) ? `${mean.toFixed(1)} °C, ${state.region} mean` : "";
+  $("gauge-zone").textContent = depth < 200 ? "Sunlight zone" : depth < 1000 ? "Twilight zone" : "Darkness";
+  $("dark").style.opacity = String(0.8 * (1 - Math.exp(-depth / 220)));
+  viewer.scene.render();
+}
+
+function endDive(): void {
+  diving = false;
+  $("view").classList.remove("diving");
+  castLines.show = castTops.show = true;
+  $("gauge").hidden = true;
+  $("dark").style.opacity = "0";
+  $("dive").textContent = "Dive";
+  void drawCube(true);
+}
+
+function dive(): void {
+  if (diving) { endDive(); return; }
+  if (state.lens !== "temperature") $<HTMLButtonElement>("lenses").querySelector("button")!.click();
+  diving = true;
+  $("dive").textContent = "Stop";
+  const t0 = performance.now();
+  const step = () => {
+    if (!diving) return;
+    const t = Math.min(1, (performance.now() - t0) / DIVE_MS);
+    diveAt(t);
+    if (t < 1) requestAnimationFrame(step);
+    else setTimeout(() => diving && endDive(), 2500);
+  };
+  requestAnimationFrame(step);
 }
 
 // ------------------------------------------------------------------ Argo floats
@@ -363,7 +520,9 @@ function setDay(day: string): void {
   const d = new Date(`${day}T00:00:00Z`);
   $("date").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "long",
                                                            year: "numeric", timeZone: "UTC" });
-  $("what").textContent = `${FIELD_WHAT[state.field]} · ${state.region}`;
+  $("what").textContent = state.lens === "temperature"
+    ? `${FIELD_WHAT[state.field]} · ${state.region}`
+    : `Top: ${LENSES[state.lens].label.toLowerCase()} · sides: ${FIELD_LABEL[state.field].toLowerCase()} · ${state.region}`;
   writeHash();
 }
 
@@ -373,6 +532,10 @@ async function refreshDay(): Promise<void> {
   setDay(meta.days[+$<HTMLInputElement>("day").value]);
   await Promise.all([drawCube(), drawInputs(), drawEmbedding(), loadCasts()]);
   if (selected?.kind === "cell") await drawProfile();
+  if (selected) {
+    const at = selected.kind === "cast" ? selected.cast : selected;
+    await drawLensHere(at.lat, at.lon);
+  }
 }
 
 function play(): void {
@@ -419,6 +582,7 @@ async function start(): Promise<void> {
   viewer.scene.primitives.add(castLines);
   viewer.scene.primitives.add(castTops);
   cube = new CubeScene(viewer.scene);
+  track = new Track(viewer);
 
   meta = await api.meta();
   if (!meta.days.length) {
@@ -433,6 +597,8 @@ async function start(): Promise<void> {
     region: meta.regions[h.region ?? ""] ? h.region! : "Bay of Bengal",
     field: meta.fields.includes(h.field ?? "") ? h.field! : "satelight",
     axis: h.axis === "linear" ? "linear" : "stretched",
+    lens: (["fishing", "cyclone", "sonar", "heatwave"] as string[]).includes(h.lens ?? "")
+      ? h.lens as LensName : "temperature",
   };
 
   const slider = $<HTMLInputElement>("day");
@@ -448,11 +614,22 @@ async function start(): Promise<void> {
     setDay(state.day);
     void drawCube(true);
     drawSkill();
+    drawLensCard();
   });
   segmented($("fields"), meta.fields.map((f) => [f, FIELD_LABEL[f] ?? f]), state.field, (f) => {
     state.field = f;
     setDay(state.day);
     void drawCube();
+  });
+  $("dive").onclick = dive;
+  segmented($("lenses"), [["temperature", "Temperature"],
+    ...Object.entries(LENSES).map(([k, d]) => [k, d.label] as [string, string])], state.lens, (l) => {
+    state.lens = l as LensName;
+    setDay(state.day);
+    drawLensCard();
+    void drawCube();
+    if (selected?.kind === "cell") void drawLensHere(selected.lat, selected.lon);
+    else if (selected?.kind === "cast") void drawLensHere(selected.cast.lat, selected.cast.lon);
   });
   segmented($("axis"), [["stretched", "√ depth"], ["linear", "Linear depth"]], state.axis, (a) => {
     state.axis = a as DepthAxis;
@@ -471,10 +648,13 @@ async function start(): Promise<void> {
       selected = { kind: "cell", lat: p.lat, lon: p.lon };
     }
     await drawProfile();
+    const at = selected.kind === "cast" ? selected.cast : selected;
+    await drawLensHere(at.lat, at.lon);
   }, ScreenSpaceEventType.LEFT_CLICK);
 
   setDay(state.day);
   drawSkill();
+  drawLensCard();
   await Promise.all([drawCube(true), drawInputs(), drawEmbedding(), loadCasts()]);
   // A linked day with no reconstruction (an input was missing that day, see
   // data/output/daily/manifest.json) is said so, not silently swapped for another day.
@@ -497,8 +677,14 @@ async function start(): Promise<void> {
   Object.assign(window, { sl: {
     viewer, cube, meta, state: () => state, casts: () => casts,
     ready: true,
-    pickCast: async (i: number) => { selected = { kind: "cast", cast: casts[i] }; await drawProfile(); },
-    pickCell: async (lat: number, lon: number) => { selected = { kind: "cell", lat, lon }; await drawProfile(); },
+    pickCast: async (i: number) => {
+      selected = { kind: "cast", cast: casts[i] };
+      await Promise.all([drawProfile(), drawLensHere(casts[i].lat, casts[i].lon)]);
+    },
+    pickCell: async (lat: number, lon: number) => {
+      selected = { kind: "cell", lat, lon };
+      await Promise.all([drawProfile(), drawLensHere(lat, lon)]);
+    },
     // Camera about the cube, set at once (no flight), and one explicit render.
     orbit: (heading: number, pitch: number, range = 1.9) => {
       const x = cube.extent();
@@ -525,6 +711,13 @@ async function start(): Promise<void> {
         viewer.scene.render();
       }
       viewer.scene.render();
+    },
+    diveAt: (t: number) => diveAt(t),
+    endDive: () => endDive(),
+    setLens: (l: string) => {
+      [...document.querySelectorAll<HTMLButtonElement>("#lenses button")]
+        .find((b) => b.textContent === (l === "temperature" ? "Temperature" : LENSES[l as keyof typeof LENSES].label))
+        ?.click();
     },
     setDay: async (day: string) => {
       $<HTMLInputElement>("day").value = String(meta.days.indexOf(day));

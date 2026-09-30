@@ -141,7 +141,12 @@ export class CubeScene {
   }
 
   /** Draw (or redraw) the cube for this data, cut and style. */
-  render(data: CubeData, cut: Cut, style: Style, height: number): void {
+  /**
+   * Draw (or redraw). `lensTop`, when given, paints the top face from another field and
+   * style (a lens map, added in Satelight) while the walls stay the section of `data`.
+   */
+  render(data: CubeData, cut: Cut, style: Style, height: number,
+         lensTop?: { data: CubeData; style: Style }): void {
     this.data = data;
     this.cut = cut;
     this.style = style;
@@ -169,7 +174,8 @@ export class CubeScene {
       rectangle: Rectangle.fromDegrees(wrap(cut.lon0), cut.lat0, wrap(cut.lon1), cut.lat1),
       height: top,
       vertexFormat: MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat,
-    }), paintLevel(data, cut.lon0, cut.lon1, cut.lat0, cut.lat1, cut.top, style, wX, wY));
+    }), lensTop ? paintLevel(lensTop.data, cut.lon0, cut.lon1, cut.lat0, cut.lat1, 0, lensTop.style, wX, wY)
+      : paintLevel(data, cut.lon0, cut.lon1, cut.lat0, cut.lat1, cut.top, style, wX, wY));
 
     // Four walls, each a vertical section along its edge of the cut.
     const walls: [number, number, number, number, number][] = [

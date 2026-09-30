@@ -398,9 +398,74 @@ def tchp(t: np.ndarray) -> float:
     return np.nan
 
 
+def mld(t: np.ndarray, dt: float = 0.2, ref: float = 10.0) -> float:
+    """Mixed-layer depth (m), temperature criterion: the first depth below `ref` where the
+    temperature differs from its value at `ref` by more than `dt` (de Boyer Montegut et al.
+    2004, JGR 109, C12003: 0.2 degC from 10 m), linear between levels. The top of a
+    sonar's surface duct follows it. NaN if 10 m is missing, the column never departs by
+    dt, or a level above the crossing is missing. On the 15 standard levels it resolves
+    tens of metres, not metres (said wherever it is shown)."""
+    z = config.DEPTHS
+    k0 = int(np.flatnonzero(z == ref)[0])
+    t0 = t[k0]
+    if not np.isfinite(t0):
+        return np.nan
+    for k in range(k0, z.size - 1):
+        if not np.isfinite(t[k + 1]):
+            return np.nan
+        d0, d1 = abs(t[k] - t0), abs(t[k + 1] - t0)
+        if d1 > dt:
+            return float(z[k] + (dt - d0) / (d1 - d0) * (z[k + 1] - z[k]))
+    return np.nan
+
+
 HAZARD = {"D20 (m)": lambda t: isotherm_depth(t, 20.0),
           "D26 (m)": lambda t: isotherm_depth(t, 26.0),
-          "TCHP (kJ/cm²)": tchp}
+          "TCHP (kJ/cm²)": tchp,
+          "MLD (m)": mld}
+
+
+def heatwave_block(meta: list[dict]) -> dict:
+    """Hidden heatwaves (heatwave.py) on the Argo casts: for each cast and each contender,
+    is the 50-150 m layer above its 90th percentile for that day and cell, and is it hidden
+    (the surface at or below its own)? Scored as a yes/no forecast of the cast's own flag:
+    hits, misses, false alarms, probability of detection, false alarm ratio, and the Heidke
+    skill score (0 = no better than chance). One day per cast, so no duration test."""
+    from . import heatwave
+    from .baselines import _doy
+    names = list(meta[0]["pred"])
+    arr = lambda v: np.array([np.nan if x is None else x for x in v])
+    rows = []
+    for m in meta:
+        j = int(np.floor((m["lat"] - config.LAT_EDGES[0]) / config.RES))
+        i = int(np.floor((m["lon"] - config.LON_EDGES[0]) / config.RES))
+        d = int(_doy(np.array([np.datetime64(m["day"])]))[0])
+        rows.append((heatwave.hidden(arr(m["obs"]), d, j, i),
+                     {n: heatwave.hidden(arr(m["pred"][n]), d, j, i) for n in names}))
+    out = {}
+    for e, what in ((0, "Warm 50–150 m layer"), (1, "Hidden: warm layer, normal surface")):
+        obs = np.array([r[0][e] for r in rows])
+        vals = {n: np.array([r[1][n][e] for r in rows]) for n in names}
+        ok = np.isfinite(obs)
+        for v in vals.values():
+            ok &= np.isfinite(v)
+        out[what] = {}
+        for region in REGIONS:
+            sel = ok & np.array([in_region(m["lon"], m["lat"], region) for m in meta])
+            o = obs[sel] > 0.5
+            out[what][region] = {"n": int(sel.sum()), "observed": int(o.sum()), "by": {}}
+            for n, v in vals.items():
+                f = v[sel] > 0.5
+                a, b, c = int((f & o).sum()), int((f & ~o).sum()), int((~f & o).sum())
+                dd = int((~f & ~o).sum())
+                tot = a + b + c + dd
+                exp = ((a + c) * (a + b) + (b + dd) * (c + dd)) / tot if tot else 0
+                out[what][region]["by"][n] = {
+                    "hits": a, "false_alarms": b, "misses": c,
+                    "pod": a / (a + c) if a + c else None,
+                    "far": b / (a + b) if a + b else None,
+                    "hss": (a + dd - exp) / (tot - exp) if tot - exp else None}
+    return out
 
 
 def hazard_block(meta: list[dict]) -> dict:
@@ -561,12 +626,15 @@ def _novelty_lines(result: dict) -> list[str]:
             lines.append("")
     h = result.get("hazard")
     if h:
-        lines += ["## What a cyclone feeds on: isotherm depths and heat potential (Argo, test block)", "",
+        lines += ["## Isotherm depths, heat potential and the mixed layer (Argo, test block)", "",
                   "Computed from each contender's 15 levels and from the Argo cast on the same "
-                  "15 levels. TCHP is the heat above 26 °C (Leipper and Volgenau 1972), "
-                  f"ρ = {config.RHO_REF} kg/m³, cp = TEOS-10 cp0. A cast whose profile never cools "
-                  "to the isotherm, or has a gap above it, has no value and is left out, for "
-                  "every contender alike.", ""]
+                  "15 levels. D20 is the core of the thermocline; TCHP is the heat above 26 °C "
+                  "(Leipper and Volgenau 1972), "
+                  f"ρ = {config.RHO_REF} kg/m³, cp = TEOS-10 cp0. MLD is the first depth below "
+                  "10 m more than 0.2 °C from the 10 m temperature (de Boyer Montégut et al. "
+                  "2004), resolved only as finely as the 15 levels. A cast whose profile never "
+                  "reaches the threshold, or has a gap above it, has no value and is left out, "
+                  "for every contender alike.", ""]
         for q, by_region in h.items():
             for region, by in by_region.items():
                 names = list(by)
@@ -576,6 +644,27 @@ def _novelty_lines(result: dict) -> list[str]:
                           "", "| Measure | " + " | ".join(names) + " |", "|---|" + "---:|" * len(names)]
                 for key in ("rmse", "bias", "r"):
                     lines.append(f"| {key} | " + " | ".join(_fmt(by[m], key) for m in names) + " |")
+                lines.append("")
+    hw = result.get("heatwave")
+    if hw:
+        lines += ["## Hidden heatwaves (Argo, test block)", "",
+                  "The 50–150 m layer mean above its 90th percentile for that day of year and "
+                  "cell (GLORYS training years, ±5-day window; Hobday et al. 2016), and hidden "
+                  "when the 0 m temperature is at or below its own 90th percentile. Each "
+                  "contender's flag is scored against the Argo cast's own flag, on the same "
+                  "casts. One day per cast: Hobday's 5-day minimum cannot be tested on a cast. "
+                  "POD = probability of detection, FAR = false alarm ratio, HSS = Heidke skill "
+                  "score (0 is chance, 1 perfect). Climatology never exceeds its own percentile, "
+                  "so it never flags.", ""]
+        f = lambda x: "—" if x is None else f"{x:.2f}"
+        for what, by_region in hw.items():
+            for region, r in by_region.items():
+                lines += [f"#### {what} · {region} · N = {r['n']} casts, {r['observed']} flagged by Argo",
+                          "", "| Contender | hits | false alarms | misses | POD | FAR | HSS |",
+                          "|---|---:|---:|---:|---:|---:|---:|"]
+                for n, v in r["by"].items():
+                    lines.append(f"| {n} | {v['hits']} | {v['false_alarms']} | {v['misses']} | "
+                                 f"{f(v['pod'])} | {f(v['far'])} | {f(v['hss'])} |")
                 lines.append("")
     cy = result.get("cyclones")
     if cy:
@@ -746,6 +835,7 @@ def run() -> dict:
     head = label(sel["headline"], sel)
     result["gap_closed"] = gap_closed(table)
     result["hazard"] = hazard_block(meta)
+    result["heatwave"] = heatwave_block(meta)
     result["cyclones"] = cyclone_block(aligned, t, head)
     try:
         result["incois"] = incois_block(aligned, t, meta)
@@ -790,11 +880,14 @@ def demo() -> None:
     assert np.isnan(tchp(np.full(15, 29.0))), "never cools to 26 degC: unknown, not a bound"
     gap = np.array(lin); gap[2] = np.nan
     assert np.isnan(tchp(gap)) and np.isnan(isotherm_depth(gap, 26.0)), "a gap above the crossing"
+    step = np.full(15, 28.0); step[4:] = 20.0          # 28 degC to 20 m, 20 degC from 30 m
+    assert np.isclose(mld(step), 20.0 + 0.2 / 8.0 * 10), "0.2 degC from the 10 m value"
+    assert np.isnan(mld(np.full(15, 28.0))), "never departs: unknown, not 1000 m"
     t = {"x": {"climatology": [{"rmse": 1.0}], "GLORYS (ceiling)": [{"rmse": 0.5}], "m": [{"rmse": 0.75}]}}
     import unittest.mock as um
     with um.patch.object(config, "DEPTHS", np.array([0.0])):
         assert gap_closed(t)["x"]["m"] == [0.5]
-    print("evaluate ok: profile rules (QC, gaps, no extrapolation), metrics, isotherms, TCHP, gap closed")
+    print("evaluate ok: profile rules (QC, gaps, no extrapolation), metrics, isotherms, TCHP, MLD, gap closed")
 
 
 if __name__ == "__main__":

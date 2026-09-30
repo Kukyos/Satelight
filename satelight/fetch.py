@@ -46,8 +46,10 @@ CCMP = "CCMP_WINDS_10M6HR_L4_V3.1"
 SOURCES = ["ssh", "sss", "sst", "oscar", "ccmp", "glorys"]
 
 
-def cube_path(source: str, year: int) -> Path:
-    return config.CUBE / source / f"{year}.nc"
+def cube_path(source: str, year: int, root: Path | None = None) -> Path:
+    """`root` is the near-real-time cube (config.CUBE_NRT, nowcast.py); the training cube
+    by default, so the two never mix."""
+    return (root or config.CUBE) / source / f"{year}.nc"
 
 
 def year_days(year: int) -> np.ndarray:
@@ -58,7 +60,7 @@ def year_days(year: int) -> np.ndarray:
 
 
 def _write(source: str, year: int, t: np.ndarray, data: dict, provenance: dict,
-           depth: bool = False) -> None:
+           depth: bool = False, root: Path | None = None) -> None:
     dims = ("time", "depth", "lat", "lon") if depth else ("time", "lat", "lon")
     coords = {"time": t.astype("datetime64[ns]"), "lat": config.LAT, "lon": config.LON}
     if depth:
@@ -73,7 +75,7 @@ def _write(source: str, year: int, t: np.ndarray, data: dict, provenance: dict,
     if empty:
         provenance = {**provenance, "empty_days": empty}
     ds.attrs["provenance"] = json.dumps(provenance)
-    path = cube_path(source, year)
+    path = cube_path(source, year, root)
     path.parent.mkdir(parents=True, exist_ok=True)
     enc = {k: {"zlib": True, "complevel": 1} for k in data}
     tmp = path.with_suffix(".part.nc")
@@ -138,15 +140,18 @@ def _read_days(da, pos: np.ndarray, sel: dict) -> np.ndarray:
     return out
 
 
-def _fetch_copernicus(source: str, year: int) -> None:
+def _fetch_copernicus(source: str, year: int, t: np.ndarray | None = None,
+                      spec: tuple | None = None, root: Path | None = None) -> None:
+    """One source-year into the cube. `t`, `spec` and `root` (nowcast.py) swap in other
+    days, another dataset of the same field, and the near-real-time cube."""
     from . import arco
 
-    dataset_id, variables, st = COPERNICUS[source]
+    dataset_id, variables, st = spec or COPERNICUS[source]
     store = arco.open_store(dataset_id, service="arco-time-series", raw=True)
     ds = store.ds
     step = float(np.diff(ds["latitude"].values[:2])[0])
     ys, xs = _window(ds, st, step)
-    t = year_days(year)
+    t = year_days(year) if t is None else t
     pos, missing = _time_index(ds, t)
     data, notes, cf_reports = {}, [], {}
     for ours, theirs in variables.items():
@@ -160,7 +165,7 @@ def _fetch_copernicus(source: str, year: int) -> None:
         "source": source, "dataset_id": dataset_id, "store": store.url,
         "variables": variables, "regrid": st.method, "normalisations": notes,
         "cf": cf_reports, "missing_days": missing, "fetched": str(date.today()),
-    })
+    }, root=root)
 
 
 GLORYS_BLOCK = 2081   # days per time chunk of the GLORYS time-series store (measured)
@@ -281,8 +286,8 @@ def _earthdata():
     return earthaccess
 
 
-def _granules(ea, short_name: str, year: int) -> dict:
-    t = year_days(year)
+def _granules(ea, short_name: str, year: int, t: np.ndarray | None = None) -> dict:
+    t = year_days(year) if t is None else t
     found = ea.search_data(short_name=short_name, temporal=(str(t[0]), str(t[-1])))
     out = {}
     for g in found:
@@ -324,15 +329,17 @@ def _read_ccmp(ds) -> tuple[np.ndarray, np.ndarray]:
     return ds["uwnd"].values.mean(axis=0), ds["vwnd"].values.mean(axis=0)
 
 
-def _fetch_podaac(source: str, year: int) -> None:
+def _fetch_podaac(source: str, year: int, t: np.ndarray | None = None,
+                  short: str | None = None, root: Path | None = None) -> None:
     ea = _earthdata()
-    short, reader, names = {
+    default, reader, names = {
         "oscar": (OSCAR, _read_oscar, ("uc", "vc")),
         "ccmp": (CCMP, _read_ccmp, ("uw", "vw")),
     }[source]
+    short = short or default
     session = ea.get_requests_https_session()
-    t = year_days(year)
-    granules = _granules(ea, short, year)
+    t = year_days(year) if t is None else t
+    granules = _granules(ea, short, year, t)
     out = {n: np.full((t.size, config.NLAT, config.NLON), np.nan, np.float32) for n in names}
     missing, sources = [], []
 
@@ -372,7 +379,7 @@ def _fetch_podaac(source: str, year: int) -> None:
         "granules": len(sources), "first_granule": min(sources, default=None),
         "last_granule": max(sources, default=None),
         "missing_days": missing, "fetched": str(date.today()),
-    })
+    }, root=root)
 
 
 # ------------------------------------------------------------------ driver

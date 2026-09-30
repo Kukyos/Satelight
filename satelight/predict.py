@@ -35,11 +35,12 @@ DAILY_DIR = config.OUTPUT / "daily"
 
 
 def predict_span(run: str, a: date, b: date, with_embedding: bool = False,
-                 batch: int = 8):
-    """(T, 15, H, W) degrees C with the shelf masked, days, and optionally embeddings."""
+                 batch: int = 8, root: Path | None = None):
+    """(T, 15, H, W) degrees C with the shelf masked, days, and optionally embeddings.
+    `root` reads the inputs from the near-real-time cube (nowcast.py)."""
     model, cfg, stats = load_model(run)
     x, _, t = data.load_raw("span", cfg["inputs"], with_target=False, span=(a, b),
-                            lags=cfg["lags"])
+                            lags=cfg["lags"], root=root)
     sea = data.sea_mask()
     xa = data.assemble(x, t, stats, sea)
     del x

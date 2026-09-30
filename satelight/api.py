@@ -237,6 +237,107 @@ def globe(day: str):
             "west": -180.0, "south": -90.0, "res": 0.25, "values": b64(q, np.uint8)}
 
 
+# ------------------------------------------------------------------ lenses: uses of the column
+
+LENSES = {
+    "fishing": {"title": "How deep to fish", "units": "m",
+                "what": "Depth of the 20 °C isotherm, the core of the thermocline",
+                "harness": "D20 (m)"},
+    "cyclone": {"title": "Cyclone fuel", "units": "kJ/cm²",
+                "what": "Tropical cyclone heat potential: the heat stored above 26 °C",
+                "harness": "TCHP (kJ/cm²)"},
+    "sonar": {"title": "Sonar layer", "units": "m",
+              "what": "Mixed-layer depth from temperature (0.2 °C from 10 m), where a "
+                      "sonar's surface duct ends",
+              "harness": "MLD (m)"},
+    "heatwave": {"title": "Hidden heatwaves", "units": "",
+                 "what": "50–150 m above its 90th percentile for 5 days or more; hidden where "
+                         "the surface is not",
+                 "harness": None},
+}
+
+
+def _per_cell(v: np.ndarray, f) -> np.ndarray:
+    """(15, H, W) -> (H, W), one profile function applied per sea cell."""
+    out = np.full(v.shape[1:], np.nan, np.float32)
+    for j, i in zip(*np.nonzero(np.isfinite(v[0]))):
+        out[j, i] = f(v[:, j, i])
+    return out
+
+
+@lru_cache(maxsize=64)
+def lens_map(name: str, day: str) -> np.ndarray:
+    from . import evaluate as ev
+    v = field("satelight", day)
+    if name == "fishing":
+        return _per_cell(v, lambda t: ev.isotherm_depth(t, 20.0))
+    if name == "cyclone":
+        return _per_cell(v, ev.tchp)
+    if name == "sonar":
+        return _per_cell(v, ev.mld)
+    if name == "heatwave":
+        from . import heatwave as hw
+        from .baselines import _doy
+        p_sub, p_surf = hw.baseline()
+        d = _day(day)
+        span = [d + np.timedelta64(k, "D") for k in range(-hw.MIN_DAYS + 1, hw.MIN_DAYS)]
+        warm = []
+        for x in span:
+            try:
+                f = field("satelight", str(x))
+                warm.append(hw.layer_mean(f, axis=0) > p_sub[_doy(np.array([x]))[0]])
+            except HTTPException:
+                warm.append(np.zeros(v.shape[1:], bool))    # a day with no output breaks a run
+        run = hw.runs_of(np.array(warm), hw.MIN_DAYS - 1)
+        k = _doy(np.array([d]))[0]
+        surf_warm = v[0] > p_surf[k]
+        sub = hw.layer_mean(v, axis=0)
+        # 0 none, 1 heatwave at the surface too, 2 hidden (below a normal surface)
+        return np.where(~np.isfinite(sub), np.nan,
+                        np.where(run & ~surf_warm, 2.0, np.where(run, 1.0, 0.0))).astype(np.float32)
+    raise HTTPException(400, f"unknown lens {name!r}")
+
+
+@app.get("/api/lens")
+def lens(day: str, name: str, region: str = "Bay of Bengal"):
+    if name not in LENSES:
+        raise HTTPException(400, f"unknown lens {name!r}")
+    j, i = _box(region)
+    m = lens_map(name, str(_day(day)))[j][:, i]
+    f = m[np.isfinite(m)]
+    return {"day": day, "lens": name, **LENSES[name],
+            "dimensions": [int(i.sum()), int(j.sum())],
+            "lons": config.LON[i].tolist(), "lats": config.LAT[j].tolist(),
+            "range": [float(f.min()), float(f.max())] if f.size else [0, 1],
+            "values": b64(m)}
+
+
+@app.get("/api/lens/at")
+def lens_at(day: str, lat: float, lon: float):
+    """Every lens at one cell: the readout a fisher or a forecaster gets for a place."""
+    j = int(np.clip(np.floor((lat - config.LAT_EDGES[0]) / config.RES), 0, config.NLAT - 1))
+    i = int(np.clip(np.floor((lon - config.LON_EDGES[0]) / config.RES), 0, config.NLON - 1))
+    out = {}
+    for name in LENSES:
+        try:
+            x = float(lens_map(name, str(_day(day)))[j, i])
+            out[name] = None if not np.isfinite(x) else round(x, 1)
+        except (HTTPException, FileNotFoundError):
+            out[name] = None
+    return {"day": day, "lat": float(config.LAT[j]), "lon": float(config.LON[i]), "values": out}
+
+
+@app.get("/api/track")
+def track(name: str):
+    from . import tracks
+    try:
+        pts = tracks.track(name)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    return {"name": name, "source": "IMD RSMC New Delhi best track, via IBTrACS v04r01 (NOAA NCEI)",
+            "points": pts}
+
+
 @app.get("/api/eval")
 def evaluation():
     path = config.DATA / "eval-latest.json"
