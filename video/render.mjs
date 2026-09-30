@@ -6,7 +6,7 @@
 // A segment that exists is not rendered again; delete out/seg to start over.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' });
 run('node', ['check.mjs']);
@@ -27,7 +27,7 @@ for (let a = 0; a < TOTAL; a += SEG) {
   run('ffmpeg', ['-y', '-loglevel', 'error', '-i', `${f}.tmp.mp4`, '-c', 'copy', f]);
 }
 if (!existsSync('out/seg/audio.wav')) run('npx', ['remotion', 'render', 'Film', 'out/seg/audio.wav', '--codec=wav', '--log=warn']);
-writeFileSync('out/seg/list.txt', parts.map((p) => `file '${p.replace('out/seg/', '').replace('out\seg\', '')}'`).join('\n'));
+writeFileSync('out/seg/list.txt', parts.map((p) => `file '${basename(p)}'`).join(String.fromCharCode(10)));
 run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', 'out/seg/list.txt', '-i', 'out/seg/audio.wav',
   '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', 'out/oceanembed-film-raw.mp4']);
 console.log('wrote out/oceanembed-film-raw.mp4');
