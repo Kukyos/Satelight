@@ -95,6 +95,28 @@ BASINS = {
     "Arabian Sea": {"lon": (50.0, 77.0), "lat": (5.0, 26.0)},
 }
 
+# ---------------------------------------------------------------- cyclone cases (N3)
+
+# Two cyclones inside the test block. Dates from IMD RSMC New Delhi: depression formed,
+# and landfall. "Before" is 3 days before the depression, "after" 3 days after landfall.
+# The boxes are ours, drawn to enclose the track the IMD bulletins describe
+# (10-unsourced.md).
+CYCLONES = {
+    "Mocha": {"basin": "Bay of Bengal", "depression": date(2023, 5, 9),
+              "landfall": date(2023, 5, 14), "lon": (87.0, 94.0), "lat": (10.0, 19.0),
+              "source": "IMD RSMC New Delhi, ESCS Mocha bulletins, 9-14 May 2023"},
+    "Biparjoy": {"basin": "Arabian Sea", "depression": date(2023, 6, 6),
+                 "landfall": date(2023, 6, 15), "lon": (63.0, 70.0), "lat": (12.0, 22.0),
+                 "source": "IMD RSMC New Delhi, ESCS Biparjoy report, 6-19 June 2023"},
+}
+CYCLONE_MARGIN_DAYS = 3
+
+# Tropical cyclone heat potential (Leipper and Volgenau 1972): heat above 26 degC.
+# cp0 is the TEOS-10 constant; the reference density is our stated choice (10-unsourced.md).
+TCHP_T = 26.0
+CP0 = 3991.86795711963      # J kg-1 K-1, TEOS-10
+RHO_REF = 1025.0            # kg m-3
+
 # ---------------------------------------------------------------- inputs (L9)
 
 # Channel order of the model input. Satellite surface observations only.

@@ -469,6 +469,14 @@ async function start(): Promise<void> {
   selected = first ? { kind: "cast", cast: first }
     : { kind: "cell", lat: (b.lat[0] + b.lat[1]) / 2, lon: (b.lon[0] + b.lon[1]) / 2 };
   await drawProfile();
+  // A handle for the deck and film capture scripts (submission/capture.cjs, video/capture.cjs):
+  // they drive the camera frame by frame and pick a float without a mouse.
+  Object.assign(window, { oe: {
+    viewer, cube, meta, state: () => state, casts: () => casts,
+    ready: true,
+    pickCast: async (i: number) => { selected = { kind: "cast", cast: casts[i] }; await drawProfile(); },
+    pickCell: async (lat: number, lon: number) => { selected = { kind: "cell", lat, lon }; await drawProfile(); },
+  } });
 }
 
 void start();

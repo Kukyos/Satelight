@@ -358,6 +358,165 @@ def incois_block(aligned: dict, t: np.ndarray, casts: list[dict] | None = None) 
             "qc": qc, "reference_vs_argo": reference}
 
 
+# ------------------------------------------------------------------ what a cyclone feeds on
+
+
+def isotherm_depth(t: np.ndarray, iso: float) -> float:
+    """Depth (m) where a 15-level profile first cools through `iso`, linear between
+    levels. NaN if the surface is already colder, the profile never gets that cold, or a
+    level above the crossing is missing: nothing is guessed past the data."""
+    z = config.DEPTHS
+    if not np.isfinite(t[0]) or t[0] <= iso:
+        return np.nan
+    for k in range(z.size - 1):
+        if not np.isfinite(t[k + 1]):
+            return np.nan
+        if t[k + 1] <= iso:
+            return float(z[k] + (t[k] - iso) / (t[k] - t[k + 1]) * (z[k + 1] - z[k]))
+    return np.nan
+
+
+def tchp(t: np.ndarray) -> float:
+    """Tropical cyclone heat potential, kJ/cm^2: rho cp times the integral of (T - 26)
+    from the surface down to the 26 degC isotherm, trapezoidal on the 15 levels. Zero when
+    the surface is at or below 26 degC; NaN (unknown, not zero, not a lower bound) when
+    the profile never cools to 26 degC or a level above the crossing is missing."""
+    z, a = config.DEPTHS, t - config.TCHP_T
+    if not np.isfinite(a[0]):
+        return np.nan
+    if a[0] <= 0:
+        return 0.0
+    area = 0.0
+    for k in range(z.size - 1):
+        if not np.isfinite(a[k + 1]):
+            return np.nan
+        if a[k + 1] > 0:
+            area += 0.5 * (a[k] + a[k + 1]) * (z[k + 1] - z[k])
+        else:
+            area += 0.5 * a[k] * (a[k] / (a[k] - a[k + 1])) * (z[k + 1] - z[k])
+            return float(config.RHO_REF * config.CP0 * area / 1e7)
+    return np.nan
+
+
+HAZARD = {"D20 (m)": lambda t: isotherm_depth(t, 20.0),
+          "D26 (m)": lambda t: isotherm_depth(t, 26.0),
+          "TCHP (kJ/cm²)": tchp}
+
+
+def hazard_block(meta: list[dict]) -> dict:
+    """The 20 and 26 degC isotherm depths and the heat potential, from each contender's
+    15 levels and from the Argo cast on the same 15 levels, scored per region. As in the
+    temperature tables, a cast counts only where the cast and every contender have a value."""
+    names = list(meta[0]["pred"])
+    out = {}
+    for q, f in HAZARD.items():
+        obs = np.array([f(np.array([np.nan if x is None else x for x in m["obs"]])) for m in meta])
+        vals = {n: np.array([f(np.array([np.nan if x is None else x for x in m["pred"][n]]))
+                             for m in meta]) for n in names}
+        ok = np.isfinite(obs)
+        for v in vals.values():
+            ok &= np.isfinite(v)
+        out[q] = {}
+        for region in REGIONS:
+            sel = ok & np.array([in_region(m["lon"], m["lat"], region) for m in meta])
+            out[q][region] = {n: {**scores(v[sel], obs[sel], None),
+                                  "obs_mean": float(obs[sel].mean()) if sel.any() else None}
+                              for n, v in vals.items()}
+    return out
+
+
+def gap_closed(table: dict) -> dict:
+    """Share of the gap between the floor and the ceiling that a contender closes, per
+    depth and region: (RMSE climatology - RMSE model) / (RMSE climatology - RMSE GLORYS).
+    1 means as close to Argo as GLORYS, 0 no better than climatology, negative worse.
+    None where GLORYS is not better than climatology, so there is no gap to close."""
+    out = {}
+    for region, by in table.items():
+        c, g = by["climatology"], by["GLORYS (ceiling)"]
+        out[region] = {}
+        for name in by:
+            if name in ("climatology", "GLORYS (ceiling)"):
+                continue
+            row = []
+            for k in range(config.DEPTHS.size):
+                cr, gr, mr = c[k].get("rmse"), g[k].get("rmse"), by[name][k].get("rmse")
+                row.append(None if None in (cr, gr, mr) or cr - gr <= 1e-9
+                           else float((cr - mr) / (cr - gr)))
+            out[region][name] = row
+    return out
+
+
+def cyclone_block(aligned: dict, t: np.ndarray, headline_label: str) -> dict:
+    """Each cyclone's wake: the change in box-mean temperature per depth between 3 days
+    before the depression and 3 days after landfall, in the reconstruction, in GLORYS
+    and in climatology (whose change is only the season). A case study beside the Argo
+    scores, not a validation: GLORYS is the training target. Also writes a map figure."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    out = {}
+    show = {"reconstruction": headline_label, "GLORYS": "GLORYS (ceiling)",
+            "climatology": "climatology"}
+    for name, cy in config.CYCLONES.items():
+        pad = np.timedelta64(config.CYCLONE_MARGIN_DAYS, "D")
+        d0 = np.datetime64(cy["depression"]) - pad
+        d1 = np.datetime64(cy["landfall"]) + pad
+        i0, i1 = np.searchsorted(t, d0), np.searchsorted(t, d1)
+        if i0 >= t.size or i1 >= t.size or t[i0] != d0 or t[i1] != d1:
+            out[name] = {"error": f"{d0} or {d1} not in the scored days"}
+            continue
+        jj = (config.LAT >= cy["lat"][0]) & (config.LAT <= cy["lat"][1])
+        ii = (config.LON >= cy["lon"][0]) & (config.LON <= cy["lon"][1])
+        rec = {"before": str(d0), "after": str(d1), "box": {"lon": cy["lon"], "lat": cy["lat"]},
+               "source": cy["source"], "change": {}, "before_mean": {}}
+        for key, lab in show.items():
+            v = aligned[lab]
+            a, b = v[i0][:, jj][:, :, ii], v[i1][:, jj][:, :, ii]
+            both = np.isfinite(a) & np.isfinite(b)
+            rec["change"][key] = [float((b[k] - a[k])[both[k]].mean()) if both[k].any() else None
+                                  for k in range(config.DEPTHS.size)]
+            rec["before_mean"][key] = [float(a[k][both[k]].mean()) if both[k].any() else None
+                                       for k in range(config.DEPTHS.size)]
+        rec["tchp_box_mean"] = {}
+        for key, lab in show.items():
+            v = aligned[lab]
+            col = lambda day: np.array([[tchp(v[day][:, j, i]) for i in np.flatnonzero(ii)]
+                                        for j in np.flatnonzero(jj)])
+            a, b = col(i0), col(i1)
+            both = np.isfinite(a) & np.isfinite(b)
+            rec["tchp_box_mean"][key] = {"before": float(a[both].mean()), "after": float(b[both].mean()),
+                                         "cells": int(both.sum())}
+        # Map: change at 0 m and 50 m, reconstruction beside GLORYS, one symmetric scale.
+        ks = [int(np.flatnonzero(config.DEPTHS == d)[0]) for d in (0, 50)]
+        fig, axs = plt.subplots(2, 2, figsize=(9, 7.2), constrained_layout=True)
+        lim = 3.0
+        for r, k in enumerate(ks):
+            for c, lab in enumerate([headline_label, "GLORYS (ceiling)"]):
+                v = aligned[lab]
+                dv = v[i1, k] - v[i0, k]
+                ax = axs[r, c]
+                im = ax.pcolormesh(config.LON, config.LAT, dv, cmap="RdBu_r", vmin=-lim, vmax=lim,
+                                   shading="nearest")
+                ax.add_patch(plt.Rectangle((cy["lon"][0], cy["lat"][0]),
+                                           cy["lon"][1] - cy["lon"][0], cy["lat"][1] - cy["lat"][0],
+                                           fill=False, ec="k", lw=1, ls="--"))
+                span = 6.0
+                ax.set_xlim(cy["lon"][0] - span, cy["lon"][1] + span)
+                ax.set_ylim(max(5, cy["lat"][0] - span), min(30, cy["lat"][1] + span))
+                ax.set_facecolor("#8a8a8a")
+                who = "Reconstruction (satellites only)" if lab == headline_label else "GLORYS (target)"
+                ax.set_title(f"{who}, {config.DEPTHS[k]:.0f} m", fontsize=10)
+        fig.colorbar(im, ax=axs, shrink=0.8, label=f"°C, {d1} minus {d0}")
+        fig.suptitle(f"Cyclone {name}: temperature change across the storm")
+        fname = f"cyclone_{name.lower()}.png"
+        fig.savefig(config.DATA / "figures" / fname, dpi=150)
+        plt.close(fig)
+        rec["figure"] = fname
+        out[name] = rec
+    return out
+
+
 # ------------------------------------------------------------------ report
 
 
@@ -380,6 +539,65 @@ def _tables(table: dict, title: str) -> list[str]:
                 lines.append(f"| {d:.0f} | {n} | " +
                              " | ".join(_fmt(by_model[m][k], key) for m in names) + " |")
             lines.append("")
+    return lines
+
+
+def _novelty_lines(result: dict) -> list[str]:
+    lines = []
+    g = result.get("gap_closed")
+    if g:
+        lines += ["## Share of the floor-to-ceiling gap closed (Argo, test block)", "",
+                  "(RMSE climatology − RMSE model) / (RMSE climatology − RMSE GLORYS), from the "
+                  "RMSE tables above. 1 = as close to Argo as GLORYS; 0 = no better than "
+                  "climatology; negative = worse than climatology; — = GLORYS is not better "
+                  "than climatology there, so there is no gap.", ""]
+        for region, by in g.items():
+            names = list(by)
+            lines += [f"#### {region}", "", "| Depth (m) | " + " | ".join(names) + " |",
+                      "|---:|" + "---:|" * len(names)]
+            for k, d in enumerate(config.DEPTHS):
+                lines.append(f"| {d:.0f} | " + " | ".join(
+                    "—" if by[n][k] is None else f"{by[n][k]:.2f}" for n in names) + " |")
+            lines.append("")
+    h = result.get("hazard")
+    if h:
+        lines += ["## What a cyclone feeds on: isotherm depths and heat potential (Argo, test block)", "",
+                  "Computed from each contender's 15 levels and from the Argo cast on the same "
+                  "15 levels. TCHP is the heat above 26 °C (Leipper and Volgenau 1972), "
+                  f"ρ = {config.RHO_REF} kg/m³, cp = TEOS-10 cp0. A cast whose profile never cools "
+                  "to the isotherm, or has a gap above it, has no value and is left out, for "
+                  "every contender alike.", ""]
+        for q, by_region in h.items():
+            for region, by in by_region.items():
+                names = list(by)
+                n = by[names[0]].get("n", 0)
+                lines += [f"#### {q} · {region} · N = {n} casts, Argo mean "
+                          + ("—" if by[names[0]].get("obs_mean") is None else f"{by[names[0]]['obs_mean']:.1f}"),
+                          "", "| Measure | " + " | ".join(names) + " |", "|---|" + "---:|" * len(names)]
+                for key in ("rmse", "bias", "r"):
+                    lines.append(f"| {key} | " + " | ".join(_fmt(by[m], key) for m in names) + " |")
+                lines.append("")
+    cy = result.get("cyclones")
+    if cy:
+        lines += ["## Cyclone wakes in the test block (case study, not validation)", "",
+                  "Change in box-mean temperature from 3 days before the depression to 3 days "
+                  "after landfall. GLORYS is the training target, so this shows whether the "
+                  "satellite-only reconstruction carries the storm's cooling; climatology's "
+                  "change is the season alone.", ""]
+        for name, r in cy.items():
+            if "error" in r:
+                lines += [f"### {name}", "", f"Not computed: {r['error']}", ""]
+                continue
+            lines += [f"### {name} · {r['before']} → {r['after']} · box {r['box']['lon']}°E, "
+                      f"{r['box']['lat']}°N", "", f"Dates: {r['source']}.", "",
+                      "| Depth (m) | reconstruction | GLORYS | climatology |", "|---:|---:|---:|---:|"]
+            for k, d in enumerate(config.DEPTHS):
+                row = [r["change"][x][k] for x in ("reconstruction", "GLORYS", "climatology")]
+                lines.append(f"| {d:.0f} | " + " | ".join("—" if v is None else f"{v:+.2f}" for v in row) + " |")
+            lines += ["", "| Box-mean TCHP (kJ/cm²) | before | after | cells |", "|---|---:|---:|---:|",
+                      *[f"| {x} | {v['before']:.1f} | {v['after']:.1f} | {v['cells']} |"
+                        for x, v in r["tchp_box_mean"].items()],
+                      "", f"Figure: `data/figures/{r['figure']}`", ""]
     return lines
 
 
@@ -438,6 +656,7 @@ def report(result: dict) -> str:
         *[f"| {k.replace('_', ' ')} | {v} |" for k, v in c.items()],
         "",
         *_tables(result["argo"], "Argo"),
+        *_novelty_lines(result),
     ]
     if "incois" in result:
         inc = result["incois"]
@@ -524,6 +743,10 @@ def run() -> dict:
               "selection": sel,
               "test_days": int(t.size), "contenders": list(aligned),
               "depths": config.DEPTHS.tolist(), "argo_counts": counts, "argo": table}
+    head = label(sel["headline"], sel)
+    result["gap_closed"] = gap_closed(table)
+    result["hazard"] = hazard_block(meta)
+    result["cyclones"] = cyclone_block(aligned, t, head)
     try:
         result["incois"] = incois_block(aligned, t, meta)
     except Exception as e:  # the Argo block stands on its own; the failure is reported
@@ -558,7 +781,20 @@ def demo() -> None:
     assert np.isnan(p2[0]) and np.isnan(p2[1]), "never extrapolated above the first good level"
     s = scores(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 4.0]), None)
     assert np.isclose(s["bias"], -1 / 3) and np.isclose(s["rmse"], np.sqrt(1 / 3))
-    print("evaluate ok: profile rules (QC, gaps, no extrapolation), metrics")
+    lin = np.array([30.0, 29.5, 29.0, 28.0, 27.0, 25.0, 22.0, 20.0, 18.0, 16.0, 14.0, 12.0, 10.0, 8.0, 6.0])
+    assert np.isclose(isotherm_depth(lin, 26.0), 40.0) and np.isclose(isotherm_depth(lin, 20.0), 100.0)
+    area = (0.5 * (4 + 3.5) * 5 + 0.5 * (3.5 + 3) * 5 + 0.5 * (3 + 2) * 10 + 0.5 * (2 + 1) * 10
+            + 0.5 * 1 * 10)
+    assert np.isclose(tchp(lin), config.RHO_REF * config.CP0 * area / 1e7), "trapezoid to the 26 degC crossing"
+    assert tchp(lin - 5) == 0.0, "surface below 26 degC: no heat potential"
+    assert np.isnan(tchp(np.full(15, 29.0))), "never cools to 26 degC: unknown, not a bound"
+    gap = np.array(lin); gap[2] = np.nan
+    assert np.isnan(tchp(gap)) and np.isnan(isotherm_depth(gap, 26.0)), "a gap above the crossing"
+    t = {"x": {"climatology": [{"rmse": 1.0}], "GLORYS (ceiling)": [{"rmse": 0.5}], "m": [{"rmse": 0.75}]}}
+    import unittest.mock as um
+    with um.patch.object(config, "DEPTHS", np.array([0.0])):
+        assert gap_closed(t)["x"]["m"] == [0.5]
+    print("evaluate ok: profile rules (QC, gaps, no extrapolation), metrics, isotherms, TCHP, gap closed")
 
 
 if __name__ == "__main__":

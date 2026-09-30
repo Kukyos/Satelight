@@ -13,3 +13,5 @@ Appended to in the same pass as the shortcut, never as a cleanup at the end.
 | cmocean `thermal`, `haline`, `balance` colour stops in the viewer | Approximated from published anchor points (carried from PS 26067), not the full tables. | The cmocean package's colour tables. |
 | The 0.2 × depth (min 25 m) gap limit for interpolating an Argo cast onto the 15 depths | Our choice, set to follow typical core-Argo vertical spacing; not from a standard. | An Argo or INCOIS validation guideline, if one prescribes it. |
 | The 50 % water share needed for a 0.25° cell to count as sea at a level | Our choice. | Sensitivity of the scores to it, measured by the harness. |
+| The cyclone boxes in `config.CYCLONES` (Mocha 87–94°E 10–19°N, Biparjoy 63–70°E 12–22°N) and the ±3-day margin | Our choice, drawn to enclose the tracks the IMD bulletins describe; the storm dates themselves are IMD's. | IMD best-track positions, and a box derived from them. |
+| Reference density 1025 kg/m³ in the heat potential (TCHP) | Our stated choice (carried from PS 26067 N8); operational products differ. cp is the TEOS-10 cp0. | The convention INCOIS uses for its own TCHP product. |

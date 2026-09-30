@@ -81,6 +81,11 @@ with stdout and stderr to `data/logs/`). Keep the machine plugged in and awake.
 3. **Move the project to `G:\Projects\SIH26P4`** once nothing is running. Keep
    `data/cache`. Rebuild `.venv` at the new path; the torch wheel is in `.wheels/`.
 4. **Then the deck and the film.** Every figure in them traces to `13-eval-results.md`.
+   *2026-09-30: decided with the team to make them now, at idea stage, rather than wait
+   for D-09. Deck built (`16-submission.md`); film in `video/` (`21-film.md`). Both say
+   S4 is half met, and are redone if D-09 changes the headline. Novelties N1–N3 (gap
+   closed, cyclone heat potential vs Argo, cyclone wakes) added to the harness
+   (`14-novelties.md`).*
 
 ## Disk
 
