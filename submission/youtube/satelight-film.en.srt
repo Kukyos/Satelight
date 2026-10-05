@@ -1,0 +1,291 @@
+1
+00:00:00,500 --> 00:00:03,553
+Every day, satellites measure the skin of the ocean:
+
+2
+00:00:03,553 --> 00:00:06,957
+its temperature, its height, its salt, the wind across it.
+
+3
+00:00:06,957 --> 00:00:09,188
+What lies underneath, they cannot see.
+
+4
+00:00:09,188 --> 00:00:10,949
+And that is where the heat is.
+
+5
+00:00:13,000 --> 00:00:14,213
+This is Satelight.
+
+6
+00:00:14,213 --> 00:00:16,437
+The ocean below, seen from space.
+
+7
+00:00:18,500 --> 00:00:20,022
+In the next six minutes:
+
+8
+00:00:20,022 --> 00:00:33,593
+a dive to a thousand metres, how deep to fish, the fuel under a cyclone, this morning's ocean, the years before the floats, hidden heatwaves, the sonar layer, the floats that check it all, and what is not done yet.
+
+9
+00:00:35,500 --> 00:00:37,086
+INCOIS asks for one thing:
+
+10
+00:00:37,086 --> 00:00:42,698
+estimate the three-dimensional ocean temperature, using only surface satellite observations.
+
+11
+00:00:44,500 --> 00:00:47,650
+So take one day in the Bay of Bengal, and go down.
+
+12
+00:00:47,650 --> 00:00:51,996
+Sunlight fades by 200 metres, and below it no satellite sees a thing.
+
+13
+00:00:51,996 --> 00:00:58,107
+Satelight carries on, level by level, to a thousand metres, reconstructed from the surface alone.
+
+14
+00:01:00,500 --> 00:01:04,030
+It reads eight fields that satellites deliver every day:
+
+15
+00:01:04,030 --> 00:01:10,398
+sea surface temperature, salinity, sea level and its anomaly, and currents and winds, east and north.
+
+16
+00:01:10,398 --> 00:01:13,550
+All on one grid, a quarter of a degree, every day.
+
+17
+00:01:15,500 --> 00:01:19,416
+An encoder compresses each cell's surface into 32 numbers:
+
+18
+00:01:19,416 --> 00:01:20,361
+the embedding.
+
+19
+00:01:20,361 --> 00:01:27,720
+A decoder turns them into temperature at the 15 standard depths, and masks every cell shallower than a level.
+
+20
+00:01:27,720 --> 00:01:33,054
+It learned from the GLORYS reanalysis, 2010 to 2020, and never takes GLORYS in.
+
+21
+00:01:35,000 --> 00:01:35,652
+For fishers.
+
+22
+00:01:35,652 --> 00:01:41,302
+INCOIS already tells them where fish are likely to gather, along fourteen stretches of coast, every day.
+
+23
+00:01:41,302 --> 00:01:49,071
+Satelight adds how deep the warm water goes at each of those zones, or that it reaches the sea floor, from the latest day the satellites allow.
+
+24
+00:01:51,000 --> 00:01:51,960
+பெரியமாங்கோடு:
+
+25
+00:01:51,960 --> 00:01:57,037
+சுமார் 115 மீட்டர் ஆழம் வரை வெதுவெதுப்பான நீர், கலப்பு அடுக்கு 20 மீட்டர்.
+
+26
+00:02:01,000 --> 00:02:02,300
+0.
+
+27
+00:02:02,300 --> 00:02:14,003
+2 metres too deep.
+
+28
+00:02:16,000 --> 00:02:17,052
+For forecasters:
+
+29
+00:02:17,052 --> 00:02:22,314
+the fuel a cyclone draws on, the heat stored above 26 degrees, mapped every day.
+
+30
+00:02:22,314 --> 00:02:29,746
+Follow Mocha up the Bay on the India Meteorological Department's own track, and watch the fuel drain in its wake.
+
+31
+00:02:31,500 --> 00:02:33,394
+0 kJ/cm².
+
+32
+00:02:33,394 --> 00:02:33,815
+9.
+
+33
+00:02:33,815 --> 00:02:44,968
+In the Bay of Bengal, Satelight and GLORYS are level.
+
+34
+00:02:47,000 --> 00:02:49,358
+GLORYS arrives months after the fact.
+
+35
+00:02:49,358 --> 00:02:53,437
+Satelight needs only what the satellites have already delivered.
+
+36
+00:02:53,437 --> 00:02:58,154
+Press Now, and it shows the ocean of the twenty-fourth of September, 2026:
+
+37
+00:02:58,154 --> 00:02:59,492
+days ago, not months.
+
+38
+00:03:01,500 --> 00:03:02,519
+Measured today:
+
+39
+00:03:02,519 --> 00:03:07,883
+sea level arrives the same day, temperature a day late, salinity six days late.
+
+40
+00:03:07,883 --> 00:03:09,581
+GLORYS is 99 days behind.
+
+41
+00:03:12,500 --> 00:03:25,482
+Scored against the real-time floats of those three months, with four fields it beats climatology from the surface to 150 metres, over the whole box and in the Bay; in the Arabian Sea, only to 75.
+
+42
+00:03:25,482 --> 00:03:29,543
+With all eight, a month behind, to 200 metres in both basins.
+
+43
+00:03:31,500 --> 00:03:33,016
+It works backwards too.
+
+44
+00:03:33,016 --> 00:03:34,465
+This is November 1997:
+
+45
+00:03:34,465 --> 00:03:41,252
+the whole North Indian Ocean, reconstructed at every depth, from satellites that were already watching.
+
+46
+00:03:43,000 --> 00:03:47,306
+From 1993 to 2000, not one Argo float surfaced in this box.
+
+47
+00:03:47,306 --> 00:03:49,130
+Satellites saw every day.
+
+48
+00:03:53,000 --> 00:04:03,728
+Scored on 2005 to 2009, years before its training, it beats climatology at every depth, in both basins, and stays behind GLORYS down to 500 metres.
+
+49
+00:04:08,000 --> 00:04:10,151
+Some heatwaves never reach the surface.
+
+50
+00:04:10,151 --> 00:04:15,500
+A warm layer, fifty to a hundred and fifty metres down, under a sea that looks normal from space.
+
+51
+00:04:15,500 --> 00:04:17,706
+Magenta marks where Satelight finds one.
+
+52
+00:04:20,000 --> 00:04:20,622
+49.
+
+53
+00:04:20,622 --> 00:04:35,139
+It over-flags, 484 false alarms, consistent with its warm thermocline.
+
+54
+00:04:37,000 --> 00:04:39,596
+And the sonar layer:
+
+55
+00:04:39,596 --> 00:04:48,552
+the depth of the mixed layer, where a hull sonar's surface duct ends.
+
+56
+00:04:48,552 --> 00:04:51,926
+This one is not there yet.
+
+57
+00:04:51,926 --> 00:04:52,186
+5.
+
+58
+00:04:54,000 --> 00:04:57,072
+The headline scores are checked the same way:
+
+59
+00:04:57,072 --> 00:05:05,331
+against Argo floats from 2023 and 2024, which the model never saw, each with its quality flag, data mode and source file.
+
+60
+00:05:07,500 --> 00:05:17,545
+Depth by depth, Satelight beats climatology from the surface to 300 metres, in both basins, and stays behind GLORYS, which had already assimilated these floats.
+
+61
+00:05:17,545 --> 00:05:19,617
+The thermocline is the hard part:
+
+62
+00:05:19,617 --> 00:05:22,129
+the error peaks there, and it runs warm.
+
+63
+00:05:24,000 --> 00:05:28,481
+The embedding is saved every day, as a file you can open.
+
+64
+00:05:28,481 --> 00:05:36,422
+One encoder's embedding predicts the mixed-layer depth, never trained on, better than the raw inputs:
+
+65
+00:05:36,422 --> 00:05:36,737
+255.
+
+66
+00:05:36,737 --> 00:05:40,118
+No single embedding also sorts the seasons.
+
+67
+00:05:40,118 --> 00:05:41,926
+That proof is half met.
+
+68
+00:05:44,000 --> 00:05:49,480
+Every number in this film comes from one harness, which anyone can run again from the repository.
+
+69
+00:05:54,000 --> 00:05:55,273
+What is not done yet:
+
+70
+00:05:55,273 --> 00:06:01,819
+the embedding proof, a warm thermocline, the sonar layer, and translations that still need a native speaker.
+
+71
+00:06:01,819 --> 00:06:03,334
+Each one is written down.
+
+72
+00:06:07,000 --> 00:06:07,640
+Satelight.
+
+73
+00:06:07,640 --> 00:06:11,737
+The code, the documents, and every number are in the repository.

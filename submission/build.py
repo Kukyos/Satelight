@@ -4,12 +4,16 @@
     python submission/build.py       # -> submission/final/Satelight-SIH2026.pptx
     powershell -ExecutionPolicy Bypass -File submission/topdf.ps1
 
-The layout, fonts, colours, masthead and footer are the P3 deck's, unchanged: its final
-.pptx is copied in as submission/base-p3.pptx (not committed; from
-SIH26P3/submission/sih/final/VVater-SIH2026-final.pptx). Every shape keeps its place and
-its run formatting; only the words and the pictures change. Every number is read from
-data/eval-latest.json, never typed (hard rule 1), and every claim about a score is
-asserted against it before the deck is written.
+The layout, fonts, colours, masthead and footer are the P3 finals deck's, unchanged:
+vvaterref.pptx in the repo root (not committed), the submitted P3 deck as hand-edited for
+the finals in its amber scheme. The shape names below were written against the submitted
+P3 deck, copied in as submission/base-p3.pptx (not committed; from
+SIH26P3/submission/sih/final/VVater-SIH2026-final.pptx); the hand edits renumbered the
+shapes, so each name is found again in the finals deck by its position, or failing that by
+its text (`translate`). Every shape keeps its place and its run formatting; only the words
+and the pictures change. Every number is read from data/eval-latest.json, never typed
+(hard rule 1), and every claim about a score is asserted against it before the deck is
+written.
 """
 
 import copy
@@ -20,14 +24,16 @@ from pathlib import Path
 from lxml import etree
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.text import PP_ALIGN
 from pptx.util import Emu
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-BASE = HERE / "base-p3.pptx"
+BASE = ROOT / "vvaterref.pptx"   # the P3 finals deck, amber
+KEYS = HERE / "base-p3.pptx"     # the submitted P3 deck the shape names refer to
 P3 = Path(r"C:\Users\Cleo\Desktop\SIH26P3\submission\sih\final\VVater-SIH2026-final.pptx")
 FIG = HERE / "figures"
-OUT = HERE / "final" / "Satelight-SIH2026.pptx"
+OUT = HERE / "final" / "Satelight-SIH2026-final.pptx"
 REPO = "https://github.com/Kukyos/Satelight"
 
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -65,6 +71,13 @@ tchp = {r: {n: TCHP[r][n]["rmse"] for n in ("climatology", HEAD, "GLORYS (ceilin
 for r in tchp:
     assert tchp[r][HEAD] < tchp[r]["climatology"], r
 MOCHA, BIP = E["cyclones"]["Mocha"], E["cyclones"]["Biparjoy"]
+# The nowcast: how far behind each source was when measured; GLORYS is the slowest.
+LAT = E["nowcast"]["latency"]
+GLORYS_LAG = LAT["sources"]["glorys"]["days_behind"]
+assert GLORYS_LAG == max(v["days_behind"] for v in LAT["sources"].values())
+# The fishing tile: 20 °C depth in the basin its picture shows, between floor and ceiling.
+D20 = {n: E["hazard"]["D20 (m)"][AS][n]["rmse"] for n in ("climatology", HEAD, "GLORYS (ceiling)")}
+assert D20["GLORYS (ceiling)"] < D20[HEAD] < D20["climatology"]
 m_t, b_t = MOCHA["tchp_box_mean"], BIP["tchp_box_mean"]
 assert m_t["reconstruction"]["after"] < m_t["reconstruction"]["before"]
 assert b_t["reconstruction"]["after"] < b_t["reconstruction"]["before"]
@@ -103,7 +116,7 @@ TITLE_PS = ("OceanEmbed - Satellite Embedding-Based Deep Learning Framework for 
 
 S1 = {"TextBox 11": [
     "Problem Statement ID - SIH26066", "", f"Problem Statement Title - {TITLE_PS}", "",
-    "Theme - Disaster Management", "", "PS Category - Software", "", "Team ID - K26125", "",
+    "Theme - Disaster Management", "", "PS Category - Software", "", "Team ID - 187550", "",
     "Team Name - Team Null"]}
 
 S2 = {
@@ -150,9 +163,9 @@ S2 = {
                    "each checked against Argo"],
     "TextBox 102": ["Sees a cyclone's cold wake"],
     "TextBox 103": ["Mocha and Biparjoy, 2023, reconstructed from satellites only"],
-    "TextBox 104": ["The reference is checked too"],
-    "TextBox 105": ["INCOIS gridded Argo range-tested and scored against Argo itself, "
-                    "before anyone is scored against it"],
+    "TextBox 104": ["This morning's ocean"],
+    "TextBox 105": ["a nowcast from the latest satellite day, scored on real-time floats; "
+                    f"GLORYS was {GLORYS_LAG} days behind on {LAT['measured']}"],
     "TextBox 106": ["No leakage, by design"],
     "TextBox 107": ["contiguous time blocks; GLORYS never an input; the test years never "
                     "touched in training"],
@@ -254,7 +267,7 @@ S4 = {
                     "New source = one fetch function", "Every run from a config and a seed",
                     "Open source; issues and PRs open"],
     "TextBox 112#2": ["ROADMAP"],
-    "Pentagon 113": ["NOW", "prototype, 2 basins"],
+    "Pentagon 113": ["NOW", "prototype, nowcast"],
     "Pentagon 114": ["3 MO", "embedding proof, salinity"],
     "Pentagon 115": ["6 MO", "daily feed for INCOIS"],
     "Pentagon 116": ["12 MO", "whole Indian Ocean"],
@@ -269,8 +282,9 @@ S5 = {
                    f"potential {f1(m_t['reconstruction']['before'])} → "
                    f"{f1(m_t['reconstruction']['after'])} kJ/cm², satellites only."],
     "TextBox 39": ["Fisheries"],
-    "TextBox 50": ["Where the warm layer ends, every day at 0.25°: the thermocline depth "
-                   "that pelagic fish follow, between the floats."],
+    "TextBox 50": ["How deep the warm layer goes, every day: the 20 °C depth fish follow. "
+                   f"Arabian Sea error vs floats: climatology {f1(D20['climatology'])}, ours "
+                   f"{f1(D20[HEAD])}, GLORYS {f1(D20['GLORYS (ceiling)'])} m."],
     "TextBox 51": ["Researchers and modellers"],
     "TextBox 62": ["Reconstruction minus GLORYS in 3D, day by day: where satellites can see "
                    "below the surface and where they cannot."],
@@ -356,7 +370,7 @@ PICTURES = {
     1: {"Group 14/Freeform 15": "deck-hero.jpg", "Group 55/Freeform 56": "deck-profile.jpg",
         "Group 65/Freeform 66": "deck-mocha-small.jpg"},
     4: {"Group 16/Freeform 17": "deck-mocha-rec.jpg", "Group 27/Freeform 28": "deck-mocha-glorys.jpg",
-        "Group 40/Freeform 41": "deck-arabian.jpg", "Group 52/Freeform 53": "deck-error.jpg",
+        "Group 40/Freeform 41": "deck-fishing.jpg", "Group 52/Freeform 53": "deck-error.jpg",
         "Group 64/Freeform 65": "deck-embedding.jpg"},
 }
 LOGO = {1: "Group 12/Freeform 13", 2: "Group 18/Freeform 19", 3: "Group 12/Freeform 13",
@@ -385,6 +399,42 @@ def shapes_by_path(slide) -> dict:
             if sh.shape_type == MSO_SHAPE_TYPE.GROUP:
                 walk(sh.shapes, prefix + sh.name + "/")
     walk(slide.shapes, "")
+    return out
+
+
+# Shapes the finals deck rebuilt, so neither their place nor their text survived: slide
+# index -> {name in the submitted deck: name in the finals deck}.
+MOVED = {3: {"TextBox 112": "TextBox 124", "Pentagon 113": "Group 74/TextBox 76",
+             "Pentagon 114": "Group 77/TextBox 79", "Pentagon 115": "Group 80/TextBox 82",
+             "Pentagon 116": "Group 83/TextBox 85"}}
+
+
+def translate(old_slide, new_slide, keys, moved) -> dict:
+    """Each submitted-deck shape name -> the same shape's name in the finals deck: the one
+    shape with the same position and size (its groups' too), else the one with the same text."""
+    old, new = shapes_by_path(old_slide), shapes_by_path(new_slide)
+
+    def sig(path, shapes):
+        parts = path.split("/")
+        return tuple((s.left, s.top, s.width, s.height) for s in
+                     (shapes["/".join(parts[:i + 1])] for i in range(len(parts))))
+
+    def text(sh):
+        return sh.text_frame.text if sh.has_text_frame and sh.text_frame.text.strip() else None
+
+    by_sig = {}
+    for n in new:
+        by_sig.setdefault(sig(n, new), []).append(n)
+    out = {}
+    for k in keys:
+        if k in moved:
+            out[k] = moved[k]
+            continue
+        c = by_sig.get(sig(k, old), [])
+        if len(c) != 1:
+            c = [n for n in new if n.count("/") == k.count("/") and text(new[n]) and text(new[n]) == text(old[k])]
+        assert len(c) == 1, ("no single twin", k, c)
+        out[k] = c[0]
     return out
 
 
@@ -435,15 +485,25 @@ def swap(slide, shape, image: Path) -> None:
 
 
 def build(out: Path = OUT) -> Path:
-    if not BASE.exists():
-        shutil.copy2(P3, BASE)
+    if not KEYS.exists():
+        shutil.copy2(P3, KEYS)
+    keys = Presentation(str(KEYS))
     prs = Presentation(str(BASE))
     for i, (slide, texts) in enumerate(zip(prs.slides, SLIDES)):
-        shapes = shapes_by_path(slide)
-        missing = [k for k in texts if k not in shapes]
-        assert not missing, (i + 1, missing)
+        old = shapes_by_path(keys.slides[i])
+        used = set(texts) | set(PICTURES.get(i, {})) | ({LOGO[i]} if i in LOGO else set()) \
+            | (CHART_SHAPES if i == 3 else set())
+        name = translate(keys.slides[i], slide, used, MOVED.get(i, {}))
+        shapes = {k: shapes_by_path(slide)[name[k]] for k in used}
         for key, paras in texts.items():
             put(shapes[key], paras)
+            # A box the hand edit shrank around P3's shorter words gets its old width back,
+            # about its centre when its text is centred.
+            sh, w = shapes[key], old[key].width
+            if "/" not in name[key] and sh.width < w:
+                if sh.text_frame.paragraphs[0].alignment == PP_ALIGN.CENTER:
+                    sh.left -= (w - sh.width) // 2
+                sh.width = w
         for key, fig in PICTURES.get(i, {}).items():
             swap(slide, shapes[key], FIG / fig)
         if i in LOGO:

@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Adapted from SIH26P3 submission/youtube/thumbnail.html. Rendered by render.cjs. -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;800&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #03060c; }
+  .stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+  .hero { position: absolute; transform-origin: 0 0; filter: contrast(1.08) saturate(1.04); }
+  .shade { position: absolute; inset: 0; pointer-events: none; }
+  .copy { position: absolute; left: 96px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+  .kicker { font: 600 30px/1 Inter, sans-serif; letter-spacing: .32em; color: #F5C542; text-transform: uppercase; margin-bottom: 34px; display: flex; align-items: center; gap: 18px; }
+  .kicker::before { content: ""; width: 54px; height: 4px; background: #F5C542; border-radius: 2px; }
+  h1 { font: 400 186px/.9 Anton, Impact, sans-serif; color: #fff; text-transform: uppercase; letter-spacing: .005em; text-shadow: 0 6px 30px rgba(0,0,0,.6); }
+  .warm { background: linear-gradient(180deg, #ffd166 0%, #ff9f1c 55%, #f3722c 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 6px 24px rgba(255,140,30,.35)); text-shadow: none; }
+  .sub { font: 600 44px/1.2 Inter, sans-serif; color: #dfe8f2; margin-top: 40px; text-shadow: 0 2px 14px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.8); }
+  .brand { position: absolute; right: 72px; bottom: 56px; font: 800 52px/1 Inter, sans-serif; color: #fff; letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.7); }
+  .brand span { color: #F5C542; }
+  .big { font-size: 250px; }
+</style></head>
+<body>
+<div class="stage" id="s"></div>
+<script>
+const v = new URLSearchParams(location.search).get('v') || 'a';
+const s = document.getElementById('s');
+// The dive frame is 1920x1080 with the date and its subtitle top left and a caption bottom
+// left; the mask fades both bands out, the left shade carries the words.
+const fade = `-webkit-mask-image: linear-gradient(180deg, transparent 0, transparent 200px, #000 300px, #000 760px, transparent 850px);`;
+// The 1997 frame is the viewer with its panels: only the cube (x 310-1555, y 160-840) is kept.
+const pre = `mask-image: linear-gradient(90deg, transparent 310px, #000 430px, #000 1440px, transparent 1555px),
+  linear-gradient(180deg, transparent 160px, #000 260px, #000 740px, transparent 840px); mask-composite: intersect;`;
+const dive = (k, x, y) => `<img class="hero" src="dive.png" style="left:${x}px;top:${y}px;transform:scale(${k});${fade}">`;
+const leftShade = `<div class="shade" style="background:
+  linear-gradient(90deg, rgba(3,6,12,.97) 0%, rgba(3,6,12,.9) 24%, rgba(3,6,12,.35) 40%, rgba(3,6,12,0) 52%),
+  radial-gradient(ellipse 80% 90% at 65% 50%, transparent 55%, rgba(0,0,0,.65) 100%),
+  linear-gradient(0deg, rgba(3,6,12,1) 0%, rgba(3,6,12,.7) 8%, rgba(3,6,12,0) 18%);"></div>`;
+const brand = `<div class="brand">Sate<span>light</span></div>`;
+
+const variants = {
+  a: dive(1.0, 330, 40) + leftShade + `
+    <div class="copy">
+      <div class="kicker">SIH 2026 · INCOIS</div>
+      <h1>The ocean<br><span class="warm">below,</span><br>from space</h1>
+      <div class="sub">Temperature to 1,000 m, from satellites alone</div>
+    </div>` + brand,
+  b: `<img class="hero" src="prefloat.png" style="left:250px;top:-40px;transform:scale(1.12);${pre}">
+    <div class="shade" style="background:
+      linear-gradient(90deg, rgba(3,6,12,.97) 0%, rgba(3,6,12,.85) 26%, rgba(3,6,12,0) 46%);"></div>
+    <div class="copy">
+      <div class="kicker">Before the Argo floats</div>
+      <h1 class="warm big">1997</h1>
+      <h1 style="font-size:132px">rebuilt</h1>
+      <div class="sub">From satellites alone, to 1,000 m</div>
+    </div>` + brand,
+  c: dive(1.0, 330, 40) + leftShade + `
+    <div class="copy">
+      <div class="kicker">The reanalysis arrives</div>
+      <h1 class="warm big">99 days</h1>
+      <h1 style="font-size:132px">late</h1>
+      <div class="sub">Satelight reads this week's satellites</div>
+    </div>` + brand,
+};
+s.innerHTML = variants[v];
+</script>
+</body></html>

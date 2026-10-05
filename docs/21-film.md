@@ -51,7 +51,12 @@ node capture.cjs                 # every clip -> public/clips/*.mp4 (about 10 mi
 npm run check                    # numbers, pacing, clip lengths; writes 21-film-script.md
 npm run studio                   # preview
 npm run render                   # check, render in segments (render.mjs), then both copies
+node captions.mjs [script.json]  # YouTube captions, timed from the takes (26-youtube.md)
 ```
+
+The end card carries the team's portal ID, 187550. It read K26125 until 2026-10-05, when
+only the last segment was re-rendered to correct it; the other segments and the narration
+are the render of 2026-09-30, unchanged.
 
 `capture.cjs` opens the viewer headless at 1920 × 1080, sets the camera for each frame
 through the viewer's capture handle (`window.sl.orbit`), renders the scene once and

@@ -386,7 +386,7 @@ const End: React.FC = () => (
     <Rise at={18}><div style={{ fontSize: 48, fontWeight: 300, color: C.accent, marginTop: 24, fontFamily: 'Consolas, monospace' }}>{repo}</div></Rise>
     <Rise at={30}><div style={{ fontSize: 26, color: C.dim, marginTop: 20 }}>Idea-stage prototype · every number from <span style={{ fontFamily: 'Consolas, monospace' }}>{harnessCommand}</span></div></Rise>
     <Rise at={48}><div style={{ fontSize: 22, color: C.faint, marginTop: 72, letterSpacing: '0.06em' }}>
-      Team Null · K26125 · SIH 2026 · PS 26066 · INCOIS, Ministry of Earth Sciences</div></Rise>
+      Team Null · 187550 · SIH 2026 · PS 26066 · INCOIS, Ministry of Earth Sciences</div></Rise>
   </Card>
 );
 

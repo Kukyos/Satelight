@@ -22,8 +22,9 @@ HARNESS_FIG = ROOT / "data" / "figures"
 E = json.loads((ROOT / "data" / "eval-latest.json").read_text().replace("NaN", "null"))
 HEAD = f"{E['selection']['headline']} (selected)"
 
-# The deck's own colours (read from the P3 slides): navy accent, ink, grey text.
-NAVY, INK, GREY, WARM = "#1F4E79", "#16202B", "#4F5B69", "#E07B39"
+# The deck's own colours (read from the P3 finals slides): amber accent, ink, grey text, and
+# the references' link blue for the ceiling, so the three lines differ in hue as well as weight.
+AMBER, INK, GREY, BLUE = "#AE630C", "#16202B", "#4F5B69", "#2E86C1"
 
 
 def fit(src: Path | Image.Image, aspect: float, focus=(0.5, 0.5), out: str = "") -> Image.Image:
@@ -55,8 +56,8 @@ def rmse_chart() -> None:
     for ax, (key, title) in zip(axs, regions):
         t = E["argo"][key]
         for name, lab, col, ls, lw in (("climatology", "Climatology (floor)", "#8C97A6", (0, (3, 3)), 1.8),
-                                       (HEAD, "Satelight (satellites only)", NAVY, "-", 2.8),
-                                       ("GLORYS (ceiling)", "GLORYS (ceiling, saw these floats)", WARM, "-", 1.6)):
+                                       (HEAD, "Satelight (satellites only)", AMBER, "-", 2.8),
+                                       ("GLORYS (ceiling)", "GLORYS (ceiling, saw these floats)", BLUE, "-", 1.6)):
             ax.plot([s["rmse"] for s in t[name]], y, ls=ls, lw=lw, color=col, label=lab, marker="o", ms=3)
         n = sum(s["n"] for s in t["climatology"])
         ax.set_title(f"{title}\n{n:,} cast-depth pairs", fontsize=11, color=INK, fontweight="bold")
@@ -99,6 +100,9 @@ def crops() -> None:
     fit(tr, 2406729 / 3310128, (0.5, 0.5), "deck-mocha-glorys.jpg")
     wide = 3891058 / 3310128
     fit(FIG / "shot-arabian-view.png", wide, (0.5, 0.55), "deck-arabian.jpg")
+    # The fishing-depth lens, Arabian Sea: the viewer's centre panel, date and legend kept.
+    fit(Image.open(FIG / "shot-lens-fishing.png").crop((602, 106, 2477, 1669)), wide, (0.5, 0.5),
+        "deck-fishing.jpg")
     fit(FIG / "shot-error-view.png", wide, (0.5, 0.55), "deck-error.jpg")
     emb = Image.open(HARNESS_FIG / "embedding_hybrid_2023-07-15.png")
     w, h = emb.size   # axes span about 7-94 % across, 7-86 % down
