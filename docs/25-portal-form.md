@@ -6,7 +6,7 @@ The text entered on the SIH portal for the final submission. Every number comes 
 beside climatology and GLORYS, per basin or for the whole box (hard rule 8).
 `python submission/textcheck.py` checks every number in the marked blocks against the
 harness, and the length of each field; it fails rather than let a block drift.
-Lengths on 2026-10-05: title 94 of 100, abstract 2,952 of 10,000, description 10,462 of
+Lengths on 2026-10-05: title 94 of 100, abstract 3,028 of 10,000, description 10,489 of
 50,000 characters.
 
 ## Idea Title (max 100)
@@ -40,7 +40,7 @@ What it is for:
 - Cyclone forecasters: the heat a cyclone feeds on, every day. Against the floats over the whole box, climatology misses it by 21.0 kJ/cm², Satelight by 12.9 and GLORYS by 11.9. Cyclone Mocha's cold wake in May 2023 shows up from satellites alone.
 - Fishermen: INCOIS's own fishing-zone advisories, each with how deep the warm water goes there, from the latest satellite day. In the Bay of Bengal, climatology misses that depth by 19.3 m, Satelight by 13.7 and GLORYS by 12.0.
 - INCOIS: this morning's ocean. On 30 September 2026 GLORYS was 99 days behind, while sea level had arrived the same day and sea temperature a day later. Satelight shows the ocean of days ago, not months.
-- Climate research: it rebuilds 1993 to 2000, years when not one Argo float surfaced in this sea. Scored on 2005 to 2009, where floats exist, it beats climatology at every depth and stays behind GLORYS down to 500 m.
+- Climate research: it rebuilds 1993 to 2000, years when not one Argo float surfaced in this sea, labelled a comparison because salinity before 2010 is not from a satellite. Scored on 2005 to 2009, where floats exist, it beats climatology at every depth and stays behind GLORYS down to 500 m.
 
 Every float keeps its quality flag, data mode and source file, and 8,500 float readings that fail quality control are counted, never dropped. Every number above comes from one test harness in the repository, which anyone can re-run with one command. What is not finished is written down: one encoder's embedding predicts the mixed-layer depth, which it was never trained on, better than the raw inputs (R² 0.351 against 0.255), but no single encoder also sorts the seasons, so that proof is half met.
 

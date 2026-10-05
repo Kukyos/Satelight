@@ -43,10 +43,10 @@ is harness output.
 | File | Picture | Words |
 |---|---|---|
 | `thumbnail-a.jpg` | The dive at 0:47: the Bay of Bengal on 17 May 2023, cut open | THE OCEAN BELOW, FROM SPACE · Temperature to 1,000 m, from satellites alone |
-| `thumbnail-b.jpg` | 15 November 1997 at 3:38: the whole North Indian Ocean, before any Argo float surfaced there | BEFORE THE ARGO FLOATS · 1997 REBUILT · From satellites alone, to 1,000 m |
+| `thumbnail-b.jpg` | 15 November 1997 at 3:38: the whole North Indian Ocean, before any Argo float surfaced there | BEFORE THE ARGO FLOATS · 1997 REBUILT · To 1,000 m · a labelled comparison |
 | `thumbnail-c.jpg` | The dive at 0:47 | THE REANALYSIS ARRIVES 99 DAYS LATE · Satelight reads this week's satellites |
 
-`b` is the strongest picture and the most surprising claim; the film explains it at 3:31.
+`b` is the strongest picture and the most surprising claim; the film explains it at 3:31. It carries "a labelled comparison" because before 2010 the salinity input is not from a satellite, and the crop leaves out the viewer's own comparison badge.
 `a` says what the product is at a glance. `c` is the sharpest hook: 99 days is how far
 behind GLORYS was on 2026-09-30 (`13-eval-results.md`, Nowcast), the same figure the film
 shows at 3:01.
@@ -75,7 +75,7 @@ What it does
 • Cyclone fuel, the heat above 26 °C, every day. Against the floats, climatology misses it by 21.0 kJ/cm², Satelight by 12.9 and GLORYS by 11.9.
 • Fishing depth beside INCOIS's own fishing zones. In the Bay of Bengal, climatology misses the 20 °C depth by 19.3 m, Satelight by 13.7 and GLORYS by 12.0.
 • This morning's ocean: GLORYS was 99 days behind on 30 September 2026. Satelight reads the satellites of days ago.
-• Before the floats: 1993 to 2000 rebuilt, years when no Argo float surfaced in this sea.
+• Before the floats: 1993 to 2000 rebuilt, years when no Argo float surfaced in this sea. Labelled a comparison: salinity before 2010 is not from a satellite.
 • Every float keeps its quality flag, data mode and source file. Readings that fail quality control are counted, never dropped.
 
 Not done yet, and said so in the film: the embedding proof is half met, the thermocline runs warm, and the sonar layer is not there yet.
@@ -123,7 +123,7 @@ Satelight, Smart India Hackathon, SIH 2026, SIH26066, INCOIS, ocean temperature,
 | Category | Science & Technology |
 | Video language / caption language | English (India) |
 | Captions | Upload `submission/youtube/satelight-film.en.srt` as English. The film has no burned-in subtitles, and YouTube's auto-captions mishear Satelight, INCOIS and GLORYS. The Tamil line at 1:50 is captioned in Tamil, as it is spoken. |
-| Altered or synthetic content | No. The footage is the running viewer on real data. The guide narration is a synthetic voice that does not imitate any real person, which YouTube's disclosure does not cover. |
+| Altered or synthetic content | The team's call; we suggest No. The footage is the running viewer on real data, and the guide narration is a synthetic voice that imitates no real person. Read YouTube's help page on disclosing altered or synthetic content at upload, and choose Yes if it asks for voices like this one. |
 | License | Standard YouTube License |
 | Allow embedding | On, so the link plays inside the portal and slides |
 | Comments | On, sorted by Top |
