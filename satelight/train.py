@@ -33,6 +33,8 @@ def load_config(path: str | Path) -> dict:
     # climatology is a fixed prior fitted on training targets only, like a learned bias
     # per cell and day of year; it is not a daily input (docs/03-limitations.md L9).
     cfg.setdefault("target", "absolute")
+    # false: the day-of-year channels are zeroed, so no calendar reaches the model (D-09).
+    cfg.setdefault("doy", True)
     return cfg
 
 
@@ -87,7 +89,7 @@ def prepare(cfg: dict, split: str, stats: data.Stats | None, sea: np.ndarray):
     ts, k = [], 0
     for p in pieces:
         x, y, t = data.load_raw(split, cfg["inputs"], lags=cfg["lags"], span=p)
-        xa[k:k + len(t)] = data.assemble(x, t, stats, sea)
+        xa[k:k + len(t)] = data.assemble(x, t, stats, sea, cfg["doy"])
         yn[k:k + len(t)] = data.normalise_target(y - target_offset(cfg, t), stats)
         ts.append(t)
         k += len(t)

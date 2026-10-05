@@ -1,0 +1,18 @@
+# unet-abs with the calendar taken away (D-09): the day-of-year channels are zeroed, so
+# any seasonal structure in the embedding has to be read from the ocean itself. On the
+# validation block the surface fields alone cluster by season above the day-of-year
+# control while the calendar-fed embeddings do not.
+name = "unet-ocean"
+role = "candidate"
+arch = "unet"
+seed = 26066
+emb = 32
+target = "absolute"
+doy = false
+batch = 8
+lr = 2e-3
+epochs = 30
+crop = [64, 96]
+dropout = 0.1
+wd = 1e-2
+noise = 0.1

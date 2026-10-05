@@ -130,15 +130,20 @@ def doy_fields(t: np.ndarray) -> np.ndarray:
     return np.stack([np.sin(ang), np.cos(ang)], axis=1).astype(np.float32)  # (T, 2)
 
 
-def assemble(x: np.ndarray, t: np.ndarray, stats: Stats, sea: np.ndarray) -> np.ndarray:
-    """Normalised model input: inputs, static fields, day of year, sea mask."""
+def assemble(x: np.ndarray, t: np.ndarray, stats: Stats, sea: np.ndarray,
+             with_doy: bool = True) -> np.ndarray:
+    """Normalised model input: inputs, static fields, day of year, sea mask.
+
+    `with_doy=False` zeroes the two day-of-year channels (the channel count is kept), so
+    the model never sees the calendar and must read the season from the ocean (D-09)."""
     T = x.shape[0]
     xn = (x - stats.x_mean[None, :, None, None]) / stats.x_std[None, :, None, None]
     xn = np.nan_to_num(xn, nan=0.0)
     st = static_fields()
     static = np.broadcast_to(np.stack([st["lat"], st["lon"], st["bathy"]])[None],
                              (T, 3) + st["lat"].shape)
-    doy = np.broadcast_to(doy_fields(t)[:, :, None, None], (T, 2) + st["lat"].shape)
+    d = doy_fields(t) if with_doy else np.zeros((T, 2), np.float32)
+    doy = np.broadcast_to(d[:, :, None, None], (T, 2) + st["lat"].shape)
     mask = np.broadcast_to(sea[None, None].astype(np.float32), (T, 1) + sea.shape)
     return np.concatenate([xn, static, doy, mask], axis=1).astype(np.float16)
 

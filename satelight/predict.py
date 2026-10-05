@@ -42,7 +42,7 @@ def predict_span(run: str, a: date, b: date, with_embedding: bool = False,
     x, _, t = data.load_raw("span", cfg["inputs"], with_target=False, span=(a, b),
                             lags=cfg["lags"], root=root)
     sea = data.sea_mask()
-    xa = data.assemble(x, t, stats, sea)
+    xa = data.assemble(x, t, stats, sea, cfg["doy"])
     del x
     preds, cells, days = [], [], []
     with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):

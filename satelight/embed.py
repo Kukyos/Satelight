@@ -153,8 +153,9 @@ def screen(runs: list[str]) -> dict:
     out, todo = {}, []
     for r in runs:
         f = config.RUNS / r / "probe_val.json"
-        if f.exists():
-            out[r] = json.loads(f.read_text())
+        cached = json.loads(f.read_text()) if f.exists() else {}
+        if "nmi_embedding" in cached:
+            out[r] = cached
         else:
             todo.append(r)
     if todo:
@@ -164,7 +165,8 @@ def screen(runs: list[str]) -> dict:
         mld, tm = data._read(MLD_SOURCE, "mld", a, b)
         month = lambda tt: tt.astype("datetime64[M]").astype(int) % 12  # noqa: E731
         for r in todo:
-            _, t, (cell, _) = predict_span(r, a, b, with_embedding=True)
+            _, t, (cell, daily) = predict_span(r, a, b, with_embedding=True)
+            sv = season_scores(daily, t)
             common = np.intersect1d(np.intersect1d(t, tx), tm)
             pick = lambda arr, tt: arr[np.searchsorted(tt, common)]  # noqa: E731
             m = pick(mld, tm)
@@ -177,15 +179,23 @@ def screen(runs: list[str]) -> dict:
             del cell
             (Ef, Xf, Yf, _), (Es, Xs, Ys, _) = rows["fit"], rows["score"]
             mu, sd = Xf.mean(0), Xf.std(0) + 1e-6
-            res = {"fit": "val block before 2022", "scored": "val block 2022"}
+            res = {"fit": "val block before 2022", "scored": "val block 2022",
+                   "nmi_embedding": sv["nmi_clusters_vs_season"],
+                   "nmi_day_of_year": sv["day_of_year_control"]["nmi_clusters_vs_season"]}
             for name, (fa, fb) in {"embedding": (Ef, Es),
                                    "raw": ((Xf - mu) / sd, (Xs - mu) / sd)}.items():
                 res[f"r2_{name}"] = float(r2_score(Ys, Ridge(alpha=1.0).fit(fa, Yf).predict(fb)))
             (config.RUNS / r / "probe_val.json").write_text(json.dumps(res, indent=1))
             out[r] = res
-    best = max(out, key=lambda r: out[r]["r2_embedding"] - out[r]["r2_raw"]) if out else None
-    return {"rule": "candidate whose embedding beats the raw features on the val-block "
-                    "MLD probe by the widest margin (fit 2021, scored 2022)",
+    # D-09, fixed 2026-10-01 before the candidate it admits had finished training: a run
+    # passing both checks on the val block is preferred; among equals, the widest MLD margin.
+    both = lambda r: (out[r]["nmi_embedding"] > out[r]["nmi_day_of_year"]  # noqa: E731
+                      and out[r]["r2_embedding"] > out[r]["r2_raw"])
+    best = max(out, key=lambda r: (both(r), out[r]["r2_embedding"] - out[r]["r2_raw"])) if out else None
+    return {"rule": "candidate whose daily embedding clusters by season above the day-of-year "
+                    "control and whose per-cell embedding beats the raw features on the MLD "
+                    "probe, both on the val block (probe fit 2021, scored 2022); among those, "
+                    "or failing any, the widest MLD margin",
             "chosen": best, "runs": out}
 
 

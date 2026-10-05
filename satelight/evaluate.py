@@ -947,8 +947,11 @@ def report(result: dict) -> str:
     if sc:
         lines += ["## Which embedding carries S4 (validation block only, fixed before scoring)", "",
                   f"Rule: {sc['rule']}. Chosen: **{sc['chosen']}**.", "",
-                  "| Run | MLD probe R², embedding | MLD probe R², raw features |", "|---|---:|---:|",
-                  *[f"| {k} | {v['r2_embedding']:.3f} | {v['r2_raw']:.3f} |"
+                  "| Run | Season NMI, embedding | Season NMI, day of year | "
+                  "MLD probe R², embedding | MLD probe R², raw features |",
+                  "|---|---:|---:|---:|---:|",
+                  *[f"| {k} | {v['nmi_embedding']:.3f} | {v['nmi_day_of_year']:.3f} | "
+                    f"{v['r2_embedding']:.3f} | {v['r2_raw']:.3f} |"
                     for k, v in sc["runs"].items()], ""]
     for run, e in result.get("embedding", {}).items():
         role = [w for w, r in (("headline", result["selection"]["headline"]),
@@ -967,8 +970,8 @@ def report(result: dict) -> str:
                       f"| Nearest-neighbour day in the same season | "
                       f"{s['nearest_neighbour_same_season']:.3f} | "
                       f"{s['nearest_neighbour_chance']:.3f} (chance) |", "",
-                      "The encoder is given the day of year, so the day of year alone is the "
-                      "control. Clustering (NMI) is the S4 test. Nearest-neighbour is judged "
+                      "The day of year alone is the control (most encoders are given it as an "
+                      "input; `unet-ocean` is not, D-09). Clustering (NMI) is the S4 test. Nearest-neighbour is judged "
                       "against chance only: with ±3 days excluded, a smoothly varying "
                       "embedding's nearest neighbour is a few days away and crosses a calendar "
                       "season boundary near each one, while the day-of-year control matches "
